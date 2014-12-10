@@ -1,8 +1,18 @@
-% INITIAL DRAFT DONE - 11.24.2014
+%BLINKPERM
 %
-% Carolyn Ranti
+% Permutation testing w/ a group's blink data (fractBlinks) - for the
+% number of permutations specified (numPerms), circularly shift each
+% subject's data by some random amount and calculate the smoothed blink for
+% the group. User must specify the number of samples per minute
+% (samplesPerMin) and the smoothing window for smoothBlinkRate() (Y).
+% 
+%
+% SEE ALSO: SMOOTHBLINKRATE
 
-function [prctile05, prctile95] = blinkPerm(numPerms, fractBlinks, unitsPerMin, Y)
+% Carolyn Ranti
+% INITIAL DRAFT DONE - 11.24.2014
+
+function [prctile05, prctile95] = blinkPerm(numPerms, fractBlinks, samplesPerMin, Y)
 
 dataLen = length(fractBlinks);
 numPpl = size(fractBlinks,1);
@@ -26,7 +36,7 @@ for currPerm = 1:numPerms
     end
     
     %calculate *smoothed* instantaneous BR for the group
-    smoothed_permuted_instBR(currPerm,:) = smoothBlinkRate(permutedData, unitsPerMin, Y);
+    smoothed_permuted_instBR(currPerm,:) = smoothBlinkRate(permutedData, samplesPerMin, Y);
 end
 
 % medianBR = median(smoothed_permuted_instBR);

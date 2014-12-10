@@ -1,29 +1,30 @@
-% WEB APP - permutation testing main script
+%PTMAIN
+% Blink web app - main script for blink inhibition id (permutation testing)
 %
 % INPUT:
 %   Number of permutations to run for the test
 %   Blink data -- 2 acceptable formats.
-%       n x f matrix (n = subjects, f = frames) with 1 = blink, 0 = no blink, NaN = lost data
+%       n x f matrix (n = subjects, f = frames) with 1 = blink, 0 = not blink, NaN = lost data
 %         OR
 %       3 column matrix: subject #, start frame, end frame
-%   Samples per minute (e.g. 1800 if frame rate is 30Hz)
+%   Samples per minute (e.g. 1800 if sample rate is 30Hz)
 %   Sample length, in frames (only required if 3 column format is used for blink data)
 %
 % NOTES:
 %  > How will data be passed to this script? Website will need to handle
-%    file uploads, somehow
+%    file uploads
 %  > For website, document shortcomings of the clip-by-clip method (can't
 %    concatenate as easily, because of the maxFrameNum requirement.)
 %  > Think about the output data format (different possible options)
-%  > Maybe split raw2fractBlinks into 2? 3 col input --> 1/0/NaN, 1/0/NaN --> fract blinks
+%  > Sample rate: change to Hz? accept non-integer value?
 %
 %
 % TIMING: 
-%   sskernel is the bottleneck! For 11 subjects, 46000 frames --> 200-ish secs, 5s
-%       for everything else.
-%   No obvious spots for improving speed and/or number of calls
+%   sskernel is the bottleneck- For 11 subjects, 46000 frames --> 200-ish 
+%       secs, 5s for everything else.
 %
 %   
+% Carolyn Ranti
 
 function output = PTmain(numPerms, blinkInput, samplesPerMin, sampleLen)
 

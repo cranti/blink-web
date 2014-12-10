@@ -8,7 +8,7 @@
 % OUTPUT
 %   n x f matrix with fractional values in the blink frames, NaNs and 0s
 %     unchanged. The fractional values sum to 1 per blink, such that if you
-%     summed across a range of frames, the result is the number of blinks in
+%     sum across a range of frames, the result is the number of blinks in
 %     that time. 
 %
 % NOTES
@@ -17,10 +17,9 @@
 %   - No checking being done for the length of blinks.
 %   - Little error checking being done.
 %
-% TODO - clean up documentation
-%
 % Carolyn Ranti
 % 12.3.2014
+
 
 %% 
 function fractBlinks = raw2fractBlinks(blinks)

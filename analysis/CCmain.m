@@ -32,10 +32,8 @@ function output = CCmain()
 %           'firstFrameOnly'
 %   'targetEvent' (default = 'allFrames') - 'allFrames' (default) or
 %           'firstFrameOnly'
-%
 
 %% 
-
 
 output = crossCorrel(refEvents,refCode,targetEvents,targetCode,lagMax,varargin);
 

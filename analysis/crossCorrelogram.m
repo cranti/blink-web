@@ -1,8 +1,4 @@
-% options to provide:
-%	1. compare individual target events to one set of reference events
-%	2. compare individual target events to individual set of reference events
-%	3. compare group of blinkers to another group of blinkers (same as 2?)
-%	4. different kinds of outputs?
+%CROSSCORRELOGRAM
 %
 % INPUTS
 %   refEvents       Cell vector, containing vectors of reference data.
