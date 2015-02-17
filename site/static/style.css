@@ -1,0 +1,192 @@
+body {
+    font-family: Helvetica, sans-serif;
+    font-size: 15px;
+}
+
+#page-wrap {
+    width: 850px;
+    margin: 0 auto;
+}
+
+#content-wrap {
+    width: 800px;
+    min-height: 300px;
+    margin: 0 auto;
+    background: #EEE;
+    padding: 25px;
+}
+
+#written-by {
+    display: none;
+    margin: 0 auto;
+    width: 850px;
+    padding: 5px;
+    font-family: Helvetica;
+    font-size: 14px;
+    font-style: italic;
+    color: #666;
+    text-align: right;
+}
+
+.title-box {
+    width: 100%;    
+    height: 300px;
+    padding-top: 100px;
+
+    background: url("https://c1.staticflickr.com/1/67/220194177_43bb600df1.jpg");
+    background-size: cover;
+    text-align: center;
+}
+
+.title-text {
+    position: relative;
+    margin: auto;
+    padding: 50px;
+
+    color: white;
+    text-decoration: none;
+    font-size: 80px;
+    font-weight: bold;
+}
+
+.navbar {
+    width: 100%;
+    margin-top: 0px;
+    background: black;
+}
+
+nav {
+    display: flex;
+    /*justify-content: space-around;*/
+    list-style-type: none;
+    font-size: 20px;
+    text-align: center;
+}
+
+ul {
+    margin: auto;
+    padding-left: 0;
+}
+
+.navlink {
+    display: inline-block;
+    margin: 0;
+    padding: 10px 20px 10px 20px;
+/*    -webkit-transition: color 1s ;
+    -moz-transition: color 1s ;
+    -o-transition: color 1s ;
+    transition: color 1s;*/
+}
+
+.navlink a {
+    text-decoration: none;
+    color: white;
+}
+
+.navlink:hover { background: #444; }
+
+.navlink:hover a { color: #FA584C; }
+
+.dropdown {
+    display: none;
+    position: absolute;
+
+    padding: 0px 5px 5px 15px;   
+    margin-top: 10px;
+    margin-left: -20px;
+
+    list-style-type: none;
+    font-size: 20px;
+    text-align: left;
+    color: white;  
+
+    background: #444;
+
+    -webkit-box-shadow: none;
+    -moz-box-shadow: none;
+    box-shadow: none;
+}
+
+.dropdown li {
+    display: block;
+    padding: 5px;
+}
+
+.dropdown .navlink a { color: white; }
+
+.navlink:hover .dropdown { display: block; }
+
+.dropdown:hover { display: block; }
+
+
+/*END OF BASE FORMAT */
+
+.ref-note {
+    font-size: 18px;
+    padding: 10px;
+    margin: -10px 20px 20px 0;
+    font-style: italic;
+}
+
+.input-table {
+    padding-bottom: 0px;
+}
+
+.input-table tr {
+    height: 30px;
+}
+
+.input-table td {
+    width: 200px;
+    max-width: 500px;
+}
+
+select {
+    font-size: 14px;
+}
+
+.input-label {
+    font-size: 18px;
+    font-weight: bold;
+    padding: 10px;
+    width: 100px;
+}
+
+textarea[name="blinks"] {
+    height: 200px;
+    min-height: 50px;
+    width: 550px;
+    min-width: 100px;
+    max-width: 550px;
+}
+
+
+.hint {
+    display: none;
+    position: absolute;
+    margin-left: 20px;
+    margin-top: 0px;
+    max-width: 400px;
+    padding: 5px;
+    font-size: 16px;
+    color: #444;
+    background: #FA584C;
+    border-radius: 5px;
+}
+
+.has-hint:hover .hint{
+    display: block;
+}
+
+input[type="submit"] {
+    display: block;
+    margin: 0 auto;
+    padding: 5px;
+    border: 1 solid;
+    border-color: black;
+    border-radius: 5px;
+    font-family: Helvetica, sans-serif;
+    font-size: 20px;
+    color: white;
+    background: #1A584C;
+}

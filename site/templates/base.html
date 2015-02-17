@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+
+<head>
+	<link rel="stylesheet" type="text/css" href="/static/style.css">
+</head>
+<body>
+	<div id="page-wrap">
+		<div class = "title-box">
+			<a class="title-text" href="/">Blink Analysis</a>
+		</div>
+		
+		<div class="navbar">
+			<nav>
+				<ul>
+					<li class = "navlink">
+						<a href="/">HOME</a>
+					</li>
+					<li class = "navlink">
+						<a href="#">BACKGROUND</a>
+						<ul class = "dropdown">
+							<li>
+								<a href="/blink-mod/background">Blink Modulation</a>
+							</li>
+							<li>
+								<a href="/psth/background">Peri-stimulus Time Histograms</a>
+							</li>
+						</ul>
+					</li>
+					<li class = "navlink">
+						<a href="#">RUN ANALYSES</a>
+						<ul class = "dropdown">
+							<li>
+								<a href="/blink-mod/analyze">Blink Modulation</a>
+							</li>
+							<li>
+								<a href="/psth/analyze">Peri-stimulus Time Histograms</a>
+							</li>
+						</ul>
+					</li>
+					<li class = "navlink">
+						<a href="/code">CODE</a>
+					</li>
+					<li class = "navlink">
+						<a href="/contact">CONTACT</a>
+					</li>
+				</ul>
+			</nav>
+		</div>
+	</div>
+	<div id="content-wrap">
+		{% block content %}
+		{% endblock %}
+	</div>
+	<div id="written-by">Website by Carolyn Ranti, 2015</div>
+</body>
