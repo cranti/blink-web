@@ -1,4 +1,4 @@
-function [results,error_msg] = blinkPerm(numPerms, rawBlinks, sampleRate) 
+function [results] = blinkPerm(numPerms, rawBlinks, sampleRate, W) 
 %BLINKPERM
 %
 % Permutation testing with a group's blink data (fractBlinks) - for the
@@ -33,73 +33,73 @@ function [results,error_msg] = blinkPerm(numPerms, rawBlinks, sampleRate)
 %       permBR_95thP - 1 x f vector with the 95th percentile blink rate
 %          found by permutation testing. 
 %       inputValues - nested struct with a field for each of the input 
-%           variables
+%           variables. TODO - update this description
 %
 % SEE ALSO: SMOOTHBLINKRATE
 
 % Carolyn Ranti
-% Updated 2.18.15 - sample rate in Hz now
+% 2.23.2015
 
-error_msg = '';
 
-% try
-    %% Convert binary blink input to fractional blinks
-    fractBlinks = raw2fractBlinks(rawBlinks); 
+%% Convert binary blink input to fractional blinks
+fractBlinks = raw2fractBlinks(rawBlinks); 
 
-    %% Smooth group BR
-    %W = 1:10; %TODO!!! determine range for W?
-    Y = convWindow(fractBlinks); % gaussian window to convolve with data
-    smoothedBR = smoothBlinkRate(fractBlinks, sampleRate, Y);
+%% Smooth group BR
+% Last input (optional) is a range or value for W (gaussian window to
+% convolve with data)
+if nargin<4
+    [Y,optW] = convWindow(fractBlinks); % gaussian window to convolve with data
+else
+    [Y,optW] = convWindow(fractBlinks,W); % gaussian window to convolve with data
+end
+smoothedBR = smoothBlinkRate(fractBlinks, sampleRate, Y);
 
-    %% Permutations
-    dataLen = length(fractBlinks);
-    numPpl = size(fractBlinks,1);
+%% Permutations
+dataLen = length(fractBlinks);
+numPpl = size(fractBlinks,1);
 
-    % Preallocate storage for permutations (# perms x frames) - each row is the
-    % smoothed instantaneous BR for the group, calculated after each subject is
-    % circularly shifted by some random amount.
-    smoothed_permuted_instBR = zeros(numPerms, dataLen);
+% Preallocate storage for permutations (# perms x frames) - each row is the
+% smoothed instantaneous BR for the group, calculated after each subject is
+% circularly shifted by some random amount.
+smoothed_permuted_instBR = zeros(numPerms, dataLen);
 
-    for currPerm = 1:numPerms
+for currPerm = 1:numPerms
 
-        % Reset shiftedData (participant x frames) - each row is the data for
-        % one subject, circularly shifted by some random amount
-        shiftedData = zeros(numPpl, dataLen, 'single');
+    % Reset shiftedData (participant x frames) - each row is the data for
+    % one subject, circularly shifted by some random amount
+    shiftedData = zeros(numPpl, dataLen, 'single');
 
-        %circularly shift data by a random amount
-        shiftSizes = round(2*dataLen*rand(numPpl,1) - dataLen);
-        for p = 1:numPpl
-            shiftedData(p,:) = circshift(fractBlinks(p,:),[0, shiftSizes(p)]);
-        end
-
-        %calculate *smoothed* instantaneous BR for the shifted group data
-        smoothed_permuted_instBR(currPerm,:) = smoothBlinkRate(shiftedData, sampleRate, Y);
+    %circularly shift data by a random amount
+    shiftSizes = round(2*dataLen*rand(numPpl,1) - dataLen);
+    for p = 1:numPpl
+        shiftedData(p,:) = circshift(fractBlinks(p,:),[0, shiftSizes(p)]);
     end
 
-    %% Calculate 5th and 95th percentile BRs, and find sig. increased/decreased blinking moments
+    %calculate *smoothed* instantaneous BR for the shifted group data
+    smoothed_permuted_instBR(currPerm,:) = smoothBlinkRate(shiftedData, sampleRate, Y);
+end
 
-    prctile05 = prctile(smoothed_permuted_instBR, 5);
-    prctile95 = prctile(smoothed_permuted_instBR, 95);
+%% Calculate 5th and 95th percentile BRs, and find sig. increased/decreased blinking moments
+prctile05 = prctile(smoothed_permuted_instBR, 5);
+prctile95 = prctile(smoothed_permuted_instBR, 95);
 
-    % significant moments of decreased and increased blinking
-    decreasedBlinking = find(smoothedBR < prctile05);
-    increasedBlinking = find(smoothedBR > prctile95);
+% significant moments of decreased and increased blinking
+decreasedBlinking = find(smoothedBR < prctile05);
+increasedBlinking = find(smoothedBR > prctile95);
 
-    %% Output structure
-    %results from analyses
-    results.smoothedBR = smoothedBR;
-    results.decreasedBlinking = decreasedBlinking;
-    results.increasedBlinking = increasedBlinking;
-    results.permBR_5thP = prctile05;
-    results.permBR_95thP = prctile95;
+%% Output structure
+%results from analyses
+results.smoothedBR = smoothedBR;
+results.decreasedBlinking = decreasedBlinking;
+results.increasedBlinking = increasedBlinking;
+results.permBR_5thP = prctile05;
+results.permBR_95thP = prctile95;
+results.optW = optW;
 
-    %save inputs:
-    results.inputValues = struct();
-    results.inputValues.numPerms = numPerms;
-    results.inputValues.blinkInput = rawBlinks;
-    results.inputValues.sampleRate = sampleRate;
-
-% catch ME %TODO - throw useful error messages
-%     results = '';
-%     error_msg = ME.message;
-% end
+%inputs:
+results.inputs = struct();
+results.inputs.numIndividuals = numPpl;
+results.inputs.numFrames = dataLen;
+results.inputs.numPerms = numPerms;
+% results.inputs.blinkInput = rawBlinks;
+results.inputs.sampleRate = sampleRate;

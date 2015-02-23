@@ -2,9 +2,7 @@ function blinkGUI()
 DEV = true;
 
 % Add inputs:
-    % numPerms
     % sampleRate
-    % sample length
     % advanced options: W
 
 % > have multiple analysis types available in one GUI, and change input
@@ -19,7 +17,11 @@ DEV = true;
 % > specs file? 
 % > graph things within the GUI
 % > have an option to NOT save anything, and just generate the figures
-%   (exploratory)
+%   (exploratory)?
+% > what to do upon closing the figure? (fclose all, etc)
+% > no resizing?
+% > option to save the figures/remake them without rerunning the analysis
+
 
 % NOTE: input specs have changed slightly: subjects should each have a
 % column, and frames should be in rows (better for excel limits).
@@ -147,7 +149,7 @@ GoButton = uicontrol(hMain,'Style','pushbutton',...
 
 %% Utility functions
 
-    %join a directory and a filename -- TODO look into how other systems
+    %join a directory and a filename -- TODO look at how other systems
     %define pathnames.
     function fullpath = dirFileJoin(dirname, filename)
         if strcmp(dirname(end),'/')
@@ -157,20 +159,29 @@ GoButton = uicontrol(hMain,'Style','pushbutton',...
         end
     end
 
-    %create an error dialogue window, and log the error if there is an
-    %error log file
-    function gui_error(error_msg, fxn, moreinfo)
-        errordlg(error_msg);
+    %create an error dialogue window, and log the error if there is a log file 
+    function gui_error(ME)
+        
+        errordlg(ME.message);
         
         fid = fopen(error_log,'a');
         if fid>0
             fprintf(fid,'%s\t',datestr(now));
-            fprintf(fid,'Function: %s\t',fxn);
-            fprintf(fid,'%s',error_msg);
-            if nargin==3
-                fprintf(fid,'\t%s',moreinfo);
+            fprintf(fid,'%s\n',ME.message);
+            
+            %PRINT THE STACK
+            if ~isempty(ME.cause) %if there is a cause, print that stack
+                stack = ME.cause{1}.stack;
+                fprintf(fid,'Cause:\t%s\n',ME.cause{1}.message);
+            else %otherwise, the stack from the exception
+                stack = ME.stack;
             end
-            fprintf(fid,'\n\n');
+         
+            for i = 1:length(stack)
+                fprintf(fid, '\tLine %i\t%s\t%s\n', stack(i).line, stack(i).name, stack(i).file);
+            end
+            
+            fprintf(fid,'\n');
             fclose(fid);
         end
     end
@@ -182,30 +193,57 @@ GoButton = uicontrol(hMain,'Style','pushbutton',...
         [input_file, PathName] = uigetfile('*.csv','Choose a csv file with blink data');
         
         input_file_full = dirFileJoin(PathName, input_file);
+
+        if input_file == 0
+            return
+        end
         
-        %TODO - before loading the file, ask the user about the format of the
-        %data...If the format is 3 column, ask them to enter sample length. Pop
-        %up windows?
-        formatType = 'BinaryMat';
+        % Get file type before loading file
+        options = {'Binary blink matrix','BinaryMat';
+                    'Three column format','3col'};
+        [formatType, value] = twoRadioDlg(options);
+        %if user cancels
+        if value==0
+            return
+        end
+        %formatType = 'BinaryMat';
+        
         if strcmpi(formatType,'3col')
-            sampleLen = 100; 
-        else
+            prompt = {'Enter data length:'};
+            dlg_title = '3 Column Format';
+            num_lines = 1;
+            answer = inputdlg(prompt,dlg_title, num_lines);
+            
+            
+            if isempty(answer)
+                return
+            else
+                sampleLen = str2num(answer{1});
+                if sampleLen<0
+                    errordlg('Data length must be greater than 0.');
+                    return
+                end
+            end
+        elseif strcmpi(formatType,'BinaryMat')
             sampleLen = NaN;
+        else
+            error('Unrecognized format type');
         end
         
-        if input_file ~= 0
-            [rawBlinks, error_msg] = readInBlinks(input_file_full,formatType,sampleLen);
-            
-            if error_msg
-                gui_error(error_msg,'readInBlinks')
-            else
-                set(hListBlinkFile,'String',input_file,'Value',1,'FontAngle','normal');
-                       
-                %Plot instantaneous blink rate
-                cla(hPlotAxes,'reset');
-                plotInstBR(rawBlinks, sampleRate, hPlotAxes);
-            end
+        %try to read in file
+        try
+            rawBlinks = readInBlinks(input_file_full, formatType, sampleLen);
+        catch ME
+            gui_error(ME);
+            return
         end
+        
+        set(hListBlinkFile,'String',input_file,'Value',1,'FontAngle','normal');
+        
+        %Plot instantaneous blink rate
+        cla(hPlotAxes,'reset');
+        plotInstBR(rawBlinks, sampleRate, hPlotAxes);
+        
     end
 
     %choose output directory
@@ -221,16 +259,16 @@ GoButton = uicontrol(hMain,'Style','pushbutton',...
         
         errordlg_msg = {};
         if isempty(rawBlinks)
-            errordlg_msg{end+1} = '  No data was loaded.';
+            errordlg_msg{end+1} = '\tNo data was loaded.';
         end
         
         %get number of permutations and check it
         numPerms = get(hNumPerms,'String');
         
         if isempty(numPerms)
-            errordlg_msg{end+1} = '  Number of permutations was not specified.';
+            errordlg_msg{end+1} = '\tNumber of permutations was not specified.';
         elseif isempty(str2double(numPerms)) %returns [] if not a valid number
-            errordlg_msg{end+1} = '  Number of permutations must be a number';
+            errordlg_msg{end+1} = '\tNumber of permutations must be a number';
         else
             numPerms = int8(str2double(numPerms));
         end
@@ -238,62 +276,73 @@ GoButton = uicontrol(hMain,'Style','pushbutton',...
         %get sample rate and check it
 %         sampleRate = get(hSampleRate,'String');
         if isempty(sampleRate)
-            errordlg_msg{end+1} = '  Sample rate of the data was not specified.';
+            errordlg_msg{end+1} = '\tSample rate of the data was not specified.';
         end
         
         
         if isempty(outputDir)
-            errordlg_msg{end+1} = '  Folder to save results was not specified.';
+            errordlg_msg{end+1} = '\tFolder to save results was not specified.';
         end
         
         
         if ~isempty(errordlg_msg)
-            errordlg(errordlg_msg);
-        else
-            
-            %get summary filename
-            summary_file = get(hOutputFile,'String');
-        
-            if isempty(summary_file)
-               warndlg('You did not specify a name for the summary file -- results will be saved in the output directory in summary.csv');
-               summary_file = 'summary.csv';
-               set(hOutputFile,'String',summary_file);
-            end
-            
-            % run the analysis
-            [results, error_msg] = blinkPerm(numPerms, rawBlinks, sampleRate);
-            if error_msg
-                gui_error(error_msg,'blinkPerm')
-            end
-            
-            % create figures
-            %TODO!
-            cla(hPlotAxes,'reset');
-            error_msg = blinkPermFigures(outputDir, results, [hPlotAxes,NaN,NaN]);
-            if error_msg
-                gui_error(error_msg,'blinkPermFigures')
-            end
-            
-            
-            % if the summary file name isn't csv, change it
-            if isempty(regexp(summary_file,'.csv$'))
-                temp = strsplit(summary_file,'.');
-                if length(temp)==1
-                    summary_file = [summary_file,'.csv'];
-                else
-                    summary_file = [temp{1},'.csv'];
-                end
-                set(hOutputFile,'String',summary_file);
-            end
-            % get the full path for the csv summary file
-            summary_file_full = dirFileJoin(outputDir, summary_file);
-            
-            % output csv summary file
-            error_msg = blinkPermSummary(summary_file_full, results);
-            if error_msg
-                gui_error(error_msg,'blinkPermSummary')
-            end
+            msg = strjoin(errordlg_msg,'\n');
+            errordlg(sprintf(msg));
+            return
         end
+        
+            
+        %get summary filename
+        summary_file = get(hOutputFile,'String');
+
+        if isempty(summary_file)
+           warndlg('You did not specify a name for the summary file -- results will be saved in the output directory in summary.csv');
+           summary_file = 'summary.csv';
+           set(hOutputFile,'String',summary_file);
+        end
+
+
+        % run the analysis
+        %TODO - get Wvalue from the GUI instead of hard-coding here
+        Wrange = 4;
+        try
+            results = blinkPerm(numPerms, rawBlinks, sampleRate, Wrange);
+        catch ME
+            gui_error(ME);
+            return
+        end
+
+        % create figures
+        %TODO - get fig format from GUI instead of hardcoding here
+        figFormat = 'pdf';
+        try
+            blinkPermFigures(outputDir, results, figFormat); %, [ax1,ax2,ax3]);
+        catch ME 
+            gui_error(ME);
+        end
+
+        % summary file
+        % if the summary file name isn't csv, change it
+        if isempty(regexp(summary_file, '.csv$', 'once'))
+            temp = strsplit(summary_file,'.');
+            if length(temp)==1
+                summary_file = [summary_file,'.csv'];
+            else
+                summary_file = [temp{1},'.csv'];
+            end
+            set(hOutputFile,'String',summary_file);
+        end
+
+        % get the full path for the csv summary file
+        summary_file_full = dirFileJoin(outputDir, summary_file);
+
+        % output csv summary file
+        try
+            blinkPermSummary(summary_file_full, results);
+        catch ME
+            gui_error(ME);
+        end
+        
     end
 
 end

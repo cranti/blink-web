@@ -1,4 +1,4 @@
-function [blinks, error_msg] = readInBlinks(filename, formatType, sampleLen)
+function blinks = readInBlinks(filename, formatType, sampleLen)
 %TODO - if format type is '3col', read in 3 column version -- use sampleLen
 % Otherwise, if format type is 'BinaryMat' or 
 %
@@ -9,7 +9,6 @@ function [blinks, error_msg] = readInBlinks(filename, formatType, sampleLen)
 % data, to match the format of all of the original scripts.
 
 
-error_msg = '';
 try
     if nargin==1 || strcmpi(formatType,'BinaryMat')
         blinks = csvread(filename);
@@ -21,8 +20,7 @@ try
         [blinks,~] = blink3ColConvert(blinks_3col, sampleLen);
     end
     
-catch ME
-    error_msg = ME.message;
-    blinks = [];
+catch 
+    error('Error reading in blink file %s',filename);
 end
 

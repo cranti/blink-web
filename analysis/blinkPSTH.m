@@ -1,5 +1,6 @@
-function results = crossCorrelogram(refEvents,refCode,targetEvents,targetCode,lagMax,numPerms,varargin)
-%CROSSCORRELOGRAM
+function results = blinkPSTH(refEvents,refCode,targetEvents,targetCode,lagMax,numPerms,varargin)
+%BLINKPSTH - Create a peri-stimulus time histogram using a group's blink
+%data.
 %
 % INPUTS
 %   refEvents       Cell vector, containing vectors of reference data.
@@ -7,7 +8,7 @@ function results = crossCorrelogram(refEvents,refCode,targetEvents,targetCode,la
 %           or reference data corresponding to each individual in
 %           targetEvents.
 %   refCode         Value in refEvents that indicates the occurrence of a
-%           reference event. 
+%           reference event.
 %   targetEvents    Matrix, with target data. TODO
 %   targetCode      Value in targetEvents that indicates the occurrence of
 %           a target event. If this variable is empty, then the target data
@@ -35,20 +36,19 @@ function results = crossCorrelogram(refEvents,refCode,targetEvents,targetCode,la
 % - verify
 % - Document
 % - if any vectors are horizontal, swap 'em
-%
-%
-% See also: CROSSCORRSUMMARY, CROSSCORRFIGURES
+% 
+% See also: BLINKPSTHSUMMARY, BLINKPSTHFIGURES
 
 % Written by Carolyn Ranti
-% 2.22.2015
+% 2.23.2015
 % Adapted from code written by Jenn Moriuchi, Grace Ann Marrinan, and Sarah Shultz
 
 
 %% Set up
-[numIndivs, dataLen] = size(targetEvents);
+[numPpl, dataLen] = size(targetEvents);
 numRefSets = length(refEvents);
 
-if numRefSets > 1 && numRefSets < numIndivs
+if numRefSets > 1 && numRefSets < numPpl
     error('If more than one reference set is provided, there must be exactly one per individual.')
 end
 
@@ -87,7 +87,7 @@ end
 allRefFrameSets = getRefFrameSets(refEvents, refCode, refEventType);
 
 %% Convert input data to targets 
-allTargetEvents = getTargetEvents(targetEvents, targetCode, targetEventType)
+allTargetEvents = getTargetEvents(targetEvents, targetCode, targetEventType);
 
 %% Calculate cross-correlogram
 results = makePSTH(allRefFrameSets, allTargetEvents, lagMax);
@@ -97,10 +97,11 @@ results.RefEvents = RefEvents;
 
 %% Permutation testing
 permResults = zeros(numPerms, 2*lagMax+1);
+permutedData = allTargetEvents; %initialize permutedData as allTargetEvents -- it's overwritten in each loop
 for p = 1:numPerms
     %TODO - circshift data. shift each subject independently, right?
-    shiftSizes = round(2*dataLen*rand(numIndivs,1) - dataLen);
-    for ii = 1:numIndivs
+    shiftSizes = round(2*dataLen*rand(numPpl,1) - dataLen);
+    for ii = 1:numPpl
         permutedData(ii,:) = circshift(allTargetEvents(ii,:),[0, shiftSizes(ii)]);
     end
     temp = makePSTH(allRefFrameSets, permutedData, lagMax);
@@ -112,17 +113,15 @@ results.prctile05 = prctile(permResults,5);
 results.prctile95 = prctile(permResults,95);
 
 %% Add inputs to results
-inputs = struct();
-inputs.numIndividuals = numIndivs;
-inputs.numFrames = dataLen;
-inputs.refEventType = refEventType;
-inputs.refCode = refCode;
-inputs.targetEventType = targetEventType;
-inputs.targetCode = targetCode;
-inputs.startFrame = startFrame;
-inputs.numPerms = numPerms;
-
-results.inputs = inputs;
+results.inputs = struct();
+results.inputs.numIndividuals = numPpl;
+results.inputs.numFrames = dataLen;
+results.inputs.numPerms = numPerms;
+results.inputs.refEventType = refEventType;
+results.inputs.refCode = refCode;
+results.inputs.targetEventType = targetEventType;
+results.inputs.targetCode = targetCode;
+results.inputs.startFrame = startFrame;
 
 end
 
@@ -134,7 +133,6 @@ end
 function allRefFrameSets = getRefFrameSets(refEvents, refCode, refEventType)
     numRefSets = size(refEvents,1); % each row is a reference set
     allRefFrameSets = cell(numRefSets); % to store reference event frames for each ref group participant.
-    nRefsNoEvents = 0; % counter
     
     for ref = 1:numRefSets
         
@@ -185,7 +183,7 @@ end
 function results = makePSTH(allRefFrameSets, allTargetEvents, lagMax)
     
     numRefSets = length(allRefFrameSets);
-    numIndivs = size(allTargetEvents,1);;
+    numIndivs = size(allTargetEvents,1);
 
     % Set counters at 0
     nRefsNoEvents = 0; %number of reference sets with no events
@@ -205,7 +203,7 @@ function results = makePSTH(allRefFrameSets, allTargetEvents, lagMax)
 
         % get the target-specific reference set, if applicable.
         if numRefSets>1     
-            refFrames = allRefFrameSets{targ}
+            refFrames = allRefFrameSets{targ};
 
             % If no reference frames, skip ahead 
             % (this condition has already been checked if there's only one ref. set)
@@ -273,7 +271,7 @@ function results = makePSTH(allRefFrameSets, allTargetEvents, lagMax)
     crossCorr = nanmean(AllCrossCorr,1);
 
     %% results struct
-    results = struct()
+    results = struct();
     results.crossCorr = crossCorr;
     results.nRefsNoEvents = nRefsNoEvents;
     results.nTargetPadding = nTargetPadding;

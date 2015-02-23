@@ -18,5 +18,5 @@ try
 	end
 	
 catch 
-	error('Error reading in reference events file.')
+	error('Error reading in reference events file %s',filename);
 end

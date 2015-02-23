@@ -1,29 +1,31 @@
-function [error_msg] = blinkPermSummary(filename, results)
-%Write out csv summary of RESULTS (structure from blinkPerm.m) to FILENAME
-% Overwrites anything in FILENAME
+function blinkPermSummary(filename, results)
+%BLINKPERMSUMMARY - Write out csv summary of RESULTS (structure from
+% blinkPerm.m) to FILENAME (overwriting any content)
 % 
-% Blanket try/catch statement -- if there is an error, it is output.
-% Otherwise, empty string is output.
-%
 % See also MAT2CSV
 
-% TODO - print in columns, not rows, to deal with excel limitations
-% TODO - when thinking about limitations for the data that can be input,
-% consider how much data can be output into a csv.
-% TODO - error checking (filename must be a csv?)
 % Carolyn Ranti
-% 2.18.2015
+% 2.23.2015
 
-error_msg = '';
+excelColLimit = 16384; %dealing with Excel limitations by printing in columns, if necessary.
 
-excelColLimit = 16384;
+fid = fopen(filename,'w');
+
+if fid<0
+    ME = MException('BlinkGUI:fileOut',sprintf('Could not create file %s',filename));
+    throw(ME);
+end
 
 try
-    fid = fopen(filename,'w');
+
+    % summary heading
     fprintf(fid, '%s,%s\n\n', 'Summary:', 'Group Blink Modulation Analysis');
     fprintf(fid, 'Summary printed:,%s\n', datestr(now));
-    fprintf(fid, 'Number of permutations:,%i\n\n', results.inputValues.numPerms);
-
+    
+    % input setting
+    fprintf(fid, 'Number of permutations:,%i\n', results.inputs.numPerms);
+    fprintf(fid, 'Optimized W used for Gaussian kernel:,%f', results.optW);
+    fprintf(fid,'\n');
     
     %% increased and decreased frames are printed in a row each, if they fit
     if length(results.decreasedBlinking) < excelColLimit && length(results.increasedBlinking) < excelColLimit
@@ -31,7 +33,6 @@ try
         increasedBlinking = mat2csv(results.increasedBlinking);
         fprintf(fid,'%s,%s\n','Frames w/ significantly decreased blinking',decreasedBlinking);
         fprintf(fid,'%s,%s\n','Frames w/ significantly increased blinking',increasedBlinking);
-    
     
     else %otherwise, they are printed in columns
         table = [results.decreasedBlinking; 
@@ -59,9 +60,9 @@ try
     fprintf(fid,'%s\n',smoothBR_Percs);
     
 catch ME
-    error_msg = ME.message;
+    fclose(fid);
+    
+    err = MException('BlinkGUI:fileOut', 'Error printing blink modulation summary file.');
+    err = addCause(err,ME);
+    throw(err);
 end
-
-
-
-
