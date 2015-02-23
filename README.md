@@ -1,4 +1,4 @@
 blink-web
 =========
 
-Web app to run analyses using blink inhibition
+GUI to run analyses using the timing of a group's eye-blinks and web site with documentation.
