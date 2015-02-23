@@ -12,7 +12,7 @@
 %           a target event. If this variable is empty, then the target data
 %           will be treated as a continuous measure. 
 %   lagMax          Size of the lag examined on either side of the
-%           reference event. The cross correlogram size will be determined
+%           reference event. The cross-correlogram size will be determined
 %           by this variable (2*lagMax + 1)
 %
 % Optional inputs - name/value pairs
@@ -22,32 +22,69 @@
 %           effects from a centering stim prior to the clip).
 %   'refEvent'      'allFrames' (default) or 'firstFrameOnly'
 %   'targetEvent'   'allFrames' (default) or 'firstFrameOnly'
-%   'autoCrossCorr'  0 (default) or 1.  Should be true if
-%           the target individuals are being compared to everyone else in
-%           the group (i.e. passing in the same values for refEvents and
+%   'autoCrossCorr'  0 (default) or 1.  Should be true if the target 
+%           individuals are being compared to everyone else in the group
+%           (i.e. if you're passing in the same values for refEvents and
 %           targetEvents)
 %
 % OUTPUT 
-%   A struct with the following fields:
+%   output - struct with the following fields:
+%       TargetGroupAllCrossCorr - every individual comparison, averaged by
+%           # ref events (??TODO - check)
+%       TargetGroupIndivCrossCorr - this is a set of each individual cross-
+%           correlogram. There is one per target individual, and they are 
+%           averaged over the comparisons for that person. (??TODO - check)
+%       TargetGroupAvgCrossCorr - this is the overall cross-correlogram, an
+%           average count of the number of target events that occur before
+%           and after each reference event. The average is weighted by 
+%           target individuals (e.g. mean of TargetGroupIndivCrossCorr). (??TODO - check)
+%       RefGroupEvents - reference event frames for each reference group 
+%           participant.
+% 
+%   counters - Extra information. Struct with the following fields:
+%       compareCount - number of comparisons between a set of reference
+%           events and a set of target events.
+%       nRefsNoEvents - number of reference event sets that had no
+%           qualifying reference events (i.e. after specified startFrame)
+%       nTargetPadding - vector with 3 numbers, indicating how many times 
+%           padding was necessary around. The values are: 
+%               > leftFill - # times had to pad before an event w/ 0s
+%               > rightFill - # times had to pad after an event w/ 0s
+%               > both - # times had to pad both before and after an event
+%
 %
 % TODO 
+% clean up output (both the documentation and possibly what i'm outputting)
 % autocorrelation option? is this something we want to do for blinking?
 % input checking / error handling
 % verify, document (see orig. script)
 %
 % 12.3.2014
 % Written by Carolyn Ranti
-% Adapted from Jenn Moriuchi/Grace Ann Marrinan/Sarah Shultz's code
+% Adapted from code written by Jenn Moriuchi, Grace Ann Marrinan, and Sarah
+% Shultz
 
 
-function output = crossCorrelogram(refEvents,refCode,targetEvents,targetCode,lagMax,varargin)
+function [output, counters] = crossCorrelogram(refEvents,refCode,targetEvents,targetCode,lagMax,varargin)
 
 %% Error checking - TODO
 
-% assert that refEvents and targetEvents are cell vectors
+assert(min(size(refEvents))==1,'Error in crossCorrelogram: refEvents must be a cell vector.');
+assert(min(size(targetEvents))==1,'Error in crossCorrelogram: targetEvents must be a cell vector.');
+
+refEventLen = cellfun(@length,refEvents);
+targetEventLen = cellfun(@length,targetEvents);
+
+try
+    checkLen = min(refEventLen == targetEventLen);
+catch
+    error('Error in crossCorrelogram - issue checking input sizes');
+end
+assert(checkLen==1, 'Error in crossCorrelogram: all items in refEvents and targetEvents must be the same length');
+
 % assert that all vectors in those two are the same length
 
-% if any of the vectors are horizontal, swap them
+% if any of the vectors are horizontal, swap them (??)
 
 %% Set up / parse optional inputs
 numIndivs = length(targetEvents);
@@ -64,10 +101,10 @@ for v = 1:2:length(varargin)
    switch varargin{v}
        case 'refEvent'
            refEventType = varargin{v+1};
-           assert(length(refEventType)==1,'refEvent must be a single value.');
+           assert(strcmpi(refEventType,'allFrames')||strcmpi(refEventType,'firstFrameOnly'),'refEvent must be allFrames or firstFrameOnly.');
        case 'targetEvent'
            targetEventType = varargin{v+1};
-           assert(length(targetEventType)<=1,'targetEvent must be empty or a single value.');
+           assert(strcmpi(targetEventType,'allFrames')||strcmpi(targetEventType,'firstFrameOnly'),'targetEvent must be allFrames or firstFrameOnly.');
        case 'startFrame'
            startFrame = varargin{v+1};
            assert(isint(startFrame) && startFrame>0 && startFrame<=clipLength,'startFrame must be a positive integer that is less than the length of the data.');
@@ -84,9 +121,9 @@ end
 
 %% Preallocate, set counters
 
-RefGroupEvents = cell(numRefSets); % to store reference event frames for each ref group participant.
-AllCrossCorr = cell(numIndivs); %store every ind. comparison, averaged by # ref events
-IndivCrossCorr = cell(numIndivs); % to store indiv cross-corr, averaged across number of comparisons (i.e. ref group n)
+RefGroupEvents = cell(numRefSets,1); % to store reference event frames for each ref group participant.
+AllCrossCorr = cell(numIndivs,1); %store every ind. comparison, averaged by # ref events
+IndivCrossCorr = cell(numIndivs,1); % to store indiv cross-corr, averaged across number of comparisons (i.e. ref group n)
 
 %counters
 compareCount = 0;
@@ -101,25 +138,30 @@ for ref = 1:numRefSets
     
     refFrames = [];
     if strcmp(refEventType,'allFrames')
-        refFrames = find(refEvents{ref} == refCode); 
+        refFrames = find(refEvents{ref} == refCode);
+        
     elseif strcmp(refEventType,'firstFrameOnly')
     	temp = diff([0,(refEvents{ref} == refCode)]);
     	refFrames = find(temp==1);
     end
     
-    % If no reference frames, skip ahead
+    % Filter to reference frames after the specified startFrame
+    if ~isempty(refFrames)
+        refFrames = refFrames(refFrames >= startFrame);
+    end
+    
+    % If there are no reference frames, skip ahead
     if isempty(refFrames)
-    	nRefsNoEvents = nRefsNoEvents + 1;
+    	nRefsNoEvents = nRefsNoEvents + 1; %update counter
         for targ = 1:numIndivs
             AllCrossCorr{targ}(ref,:) = NaN(1, 2*lagMax + 1);
         end
         continue
     end
     
-	refFrames = refFrames(refFrames >= startFrame);
+	
     
     %% Calculate cross-correlogram hits
- 
     for targ = 1:numIndivs % Loop through target group participants
 
         % Check to ensure you do not include auto-cross-correlations
@@ -136,7 +178,7 @@ for ref = 1:numRefSets
         
         % Define target participant data for this comparison. 
         if strcmp(targetEventType,'allFrames')
-            thisTarget(1,:) = targetEvents{targ};
+            thisTarget = targetEvents{targ};
             % if TargetCode is empty, leave values in there. Otherwise, turn it into a logical
             if ~isempty(targetCode)
             	thisTarget = (thisTarget == targetCode);
@@ -150,7 +192,7 @@ for ref = 1:numRefSets
         refFrameCount = 0; %how many reference frames were used
         for eventIndex = 1:length(refFrames)
             
-            timeZero = refFrames(eventIndex,1);
+            timeZero = refFrames(eventIndex);
             
             % Define target window around timeZero.
             target = thisTarget(max(startFrame,(timeZero-lagMax)):min(clipLength,(timeZero+lagMax)));
@@ -209,14 +251,18 @@ end
 %average everything (weighted by target individual)
 TargetGroupAvgCrossCorr = nanmean(tempCrossCorrAvgs,1);
 
-%% Output struct
+
+%% Output structs
 output = struct();
+
 output.TargetGroupAllCrossCorr = AllCrossCorr;
 output.TargetGroupIndivCrossCorr = IndivCrossCorr;
 output.TargetGroupAvgCrossCorr = TargetGroupAvgCrossCorr;
 output.RefGroupEvents = RefGroupEvents;
 
-output.compareCount = compareCount;
-output.nRefsNoEvents = nRefsNoEvents;
-output.nTargetPadding = nTargetPadding;
+
+counters = struct();
+counters.compareCount = compareCount;
+counters.nRefsNoEvents = nRefsNoEvents;
+counters.nTargetPadding = nTargetPadding;
 

@@ -14,8 +14,6 @@
 % NOTES
 %   - Consecutive blink frames are considered a single blink. If lost data
 %     disrupts the 1s, it will be considered two blinks.
-%   - No checking being done for the length of blinks.
-%   - Little error checking being done.
 %
 % Carolyn Ranti
 % 12.3.2014
@@ -26,22 +24,22 @@ function fractBlinks = raw2fractBlinks(blinks)
 
 fractBlinks = zeros(size(blinks));
 
-%put NaNs in fractBlinks, then remove from input
+%put NaNs in fractBlinks, then remove from original input
 fractBlinks(isnan(blinks)) = NaN;
 blinks(isnan(blinks)) = 0;
 
-assert(isempty(setdiff(blinks,[1 0])),'Blink data must only contain 1s and 0s');
+assert(isempty(setdiff(blinks,[1 0])),'Blink data must only contain 1s, 0s, and NaNs');
 
 for r = 1:size(blinks,1)
     
     %find the beginning and end of each blink. padding diff input with a 0
     %on either end takes care of 1st frame start/last frame end cases.
-    blinkDiff = diff([0,blinks(r,:),0]);
+    blinkDiff = diff([0, blinks(r,:), 0]);
     blinkStart = find(blinkDiff>0);
-    blinkEnd = find(blinkDiff<0)-1;
+    blinkEnd = find(blinkDiff<0) - 1;
     
     %sanity check
-    assert(length(blinkStart)==length(blinkEnd),'There must be the same number of blink starts and blink ends');
+    assert(length(blinkStart)==length(blinkEnd),'Something went wrong - there must be the same number of blink starts and blink ends');
     
     %convert to fractional blinks
     for b = 1:length(blinkStart)

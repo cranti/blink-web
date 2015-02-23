@@ -15,9 +15,8 @@
 % > blinkMat -- n x f matrix with 1s (blink frames) and 0s (non-blinks)
 %       n = # subjects (i.e. unique values in col 1 of input)
 %       f = # frames (sampleLen)
-%
-% > subjOrder -- order of subjects, matching the rows of blinkMat
-%
+% > subjOrder -- order of subjects, matching the rows of blinkMat. Order of
+%       subjects is the same as the input order
 %
 % NOTES: 
 %  - Currently, there is no option to include "lost" frames
@@ -34,7 +33,7 @@ function [blinkMat,subjOrder] = blink3ColConvert(blinks,sampleLen)
 
 assert(size(blinks,2)==3,'Input error: Blink data must have 3 columns.');
 
-subjOrder = unique(blinks(:,1));
+subjOrder = unique(blinks(:,1),'stable');
 
 blinkMat = zeros(length(subjOrder), sampleLen);
 
