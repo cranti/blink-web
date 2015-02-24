@@ -1,17 +1,21 @@
 function blinkPermFigures(dirToSave, results, figFormat, axesH)
 %BLINKPERMFIGURES - Plot the results from blinkPerm.m
 %
-% Save figures in the format specified by figFormat (OPTIONS: bmp, eps,
-% fig, jpg, pdf, png, tif), in the directory specified by dirToSave.
-% If figFormat is empty, figures are not saved.
+% INPUTS
+%   dirToSave   Path to directory where figures will be saved.
+%   results     Results struct from blinkPerm.m
+%   figFormat   Format for figures. Must be one of the following:
+%               'bmp', 'eps', 'fig', 'jpg', 'pdf', 'png', 'tif'
+%   axesH       Optional. Vector with 3 axis handles, where 
+%               results will be plotted. If any of them are NaN, a 
+%               new figure will be created for that particular plot.
 %
-% Optional argument: axesH as vector with 3 axes handles. If any of them
-% are NaN, the function will create a new figure
-%
-% TODO 
-% refine figures (legend placement, different line formats)
-%
-% Carolyn Ranti
+% If figFormat is empty, results will be plotted, but the figures will
+% not be saved.
+% 
+% See also BLINKPERM
+
+% Written by Carolyn Ranti
 % 2.23.2015
 
 narginchk(3,4);
@@ -33,7 +37,7 @@ try
     hold(axes1,'on');
     
     plot(axes1, results.smoothedBR,'k');
-    plot(axes1, results.permBR_5thP,'b');
+    plot(axes1, results.prctile05,'b');
     plot(axes1, results.decreasedBlinking,zeros(size(results.decreasedBlinking)), 'bo')
     
     legend(axes1, {'Smoothed Blink Rate','5th percentile','Blink Inhibition'});
@@ -54,7 +58,7 @@ try
     hold(axes2,'on');
     
     plot(axes2, results.smoothedBR,'k');
-    plot(axes2, results.permBR_95thP,'r');
+    plot(axes2, results.prctile95,'r');
     plot(axes2, results.increasedBlinking,zeros(size(results.increasedBlinking)),'ro')
     
     legend(axes2, {'Smoothed Blink Rate','95th percentile','Higher Blinking'});
@@ -75,8 +79,8 @@ try
     hold(axes3,'on');
     
     plot(axes3, results.smoothedBR,'k');
-    plot(axes3, results.permBR_5thP,'b');
-    plot(axes3, results.permBR_95thP,'r');
+    plot(axes3, results.prctile05,'b');
+    plot(axes3, results.prctile95,'r');
     plot(axes3, results.decreasedBlinking, zeros(size(results.decreasedBlinking)),'bo')
     plot(axes3, results.increasedBlinking, zeros(size(results.increasedBlinking)),'ro')
     
@@ -92,10 +96,9 @@ catch ME
     err = MException('BlinkGUI:plotting','Error plotting blink modulation results');
     err = addCause(err,ME);
     throw(err);
-    
 end
 
-%% 
+%%
 try
     if ~isempty(figFormat)
         origDir = pwd;

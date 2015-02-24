@@ -1,6 +1,8 @@
 function [results] = blinkPerm(numPerms, rawBlinks, sampleRate, W) 
 %BLINKPERM
 %
+% TODO - document this method
+%
 % Permutation testing with a group's blink data (fractBlinks) - for the
 % number of permutations specified (numPerms), circularly shift each
 % subject's data by some random amount and calculate the smoothed blink for
@@ -13,10 +15,11 @@ function [results] = blinkPerm(numPerms, rawBlinks, sampleRate, W)
 % the smoothed blink rate of the group is greater than the 95th percentile.
 %
 % INPUT:
-%   Number of permutations to run for the test
-%   Blink data - n x f matrix (n = subjects, f = frames) with binary blink
-%       data (1 = blink, 0 = no blink, NaN = lost data)
-%   Sample rate (in Hz)  
+%   numPerms    Number of permutations to run for the statistical test
+%   rawBlinks   n x f matrix (n = subjects, f = frames) with binary blink
+%               data (1 = blink, 0 = no blink, NaN = lost data)
+%   sampleRate  Sample rate (in Hz) 
+%   W           Optional -  
 % 
 % OUTPUT:
 %   Struct with the following fields:
@@ -28,12 +31,14 @@ function [results] = blinkPerm(numPerms, rawBlinks, sampleRate, W)
 %       increasedBlinking - vector with frames in which the smoothed blink
 %           rate of the group is greater than the 95th percentile found by
 %           permutation testing.
-%       permBR_5thP - 1 x f vector with the 5th percentile blink rate found
+%       prctile05 - 1 x f vector with the 5th percentile blink rate found
 %           by permutation testing.
-%       permBR_95thP - 1 x f vector with the 95th percentile blink rate
-%          found by permutation testing. 
-%       inputValues - nested struct with a field for each of the input 
-%           variables. TODO - update this description
+%       prctile95 - 1 x f vector with the 95th percentile blink rate
+%          found by permutation testing.
+%       optW - Optimal W parameter found for smoothing kernel by convWindow
+%       inputs - struct with information about the input variables
+%           (number of individuals in rawBlinks, length of data, number of
+%           permutations, sample rate)
 %
 % SEE ALSO: SMOOTHBLINKRATE
 
@@ -63,11 +68,11 @@ numPpl = size(fractBlinks,1);
 % circularly shifted by some random amount.
 smoothed_permuted_instBR = zeros(numPerms, dataLen);
 
-for currPerm = 1:numPerms
+% Set shiftedData only at the beginning - participants x frames. Each row
+% is the data for one subject, circularly shifted by some random amount
+shiftedData = zeros(numPpl, dataLen, 'single');
 
-    % Reset shiftedData (participant x frames) - each row is the data for
-    % one subject, circularly shifted by some random amount
-    shiftedData = zeros(numPpl, dataLen, 'single');
+for currPerm = 1:numPerms
 
     %circularly shift data by a random amount
     shiftSizes = round(2*dataLen*rand(numPpl,1) - dataLen);
@@ -92,8 +97,8 @@ increasedBlinking = find(smoothedBR > prctile95);
 results.smoothedBR = smoothedBR;
 results.decreasedBlinking = decreasedBlinking;
 results.increasedBlinking = increasedBlinking;
-results.permBR_5thP = prctile05;
-results.permBR_95thP = prctile95;
+results.prctile05 = prctile05;
+results.prctile95 = prctile95;
 results.optW = optW;
 
 %inputs:
@@ -101,5 +106,4 @@ results.inputs = struct();
 results.inputs.numIndividuals = numPpl;
 results.inputs.numFrames = dataLen;
 results.inputs.numPerms = numPerms;
-% results.inputs.blinkInput = rawBlinks;
 results.inputs.sampleRate = sampleRate;

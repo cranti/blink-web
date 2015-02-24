@@ -7,7 +7,7 @@ function refEvents = readInRefEvents(filename)
 % Entries are vectors of number values
 %
 % Written by Carolyn Ranti
-% 2.22.2015
+% 2.23.2015
 
 try
 	M = csvread(filename);
@@ -17,6 +17,8 @@ try
 		refEvents{end+1} = M(r,:);
 	end
 	
-catch 
-	error('Error reading in reference events file %s',filename);
+catch ME
+    err = MException('BlinkGUI:fileIn',sprintf('Error reading in reference events file %s',filename));
+    err = addCause(err, ME);
+    throw(err);
 end

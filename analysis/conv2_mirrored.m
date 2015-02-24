@@ -1,6 +1,7 @@
 function sp = conv2_mirrored(s,c)
 % 2D convolution with mirrored edges to reduce edge effects
-%output of convolution is same size as leaading input matrix
+%output of convolution is same size as leading input matrix
+
 [N,M] = size(s);
 [n,m] = size(c); %%both n & m should be odd
 

@@ -1,10 +1,13 @@
 function blinkPermSummary(filename, results)
-%BLINKPERMSUMMARY - Write out csv summary of RESULTS (structure from
-% blinkPerm.m) to FILENAME (overwriting any content)
-% 
+%BLINKPERMSUMMARY - Write out csv summary of results from blinkPerm.m
+%
+% Inputs:
+%   filename    Name of csv file to write results to (will overwrite content)
+%   results     Results struct from blinkPerm.m
+%
 % See also MAT2CSV
 
-% Carolyn Ranti
+% Written by Carolyn Ranti
 % 2.23.2015
 
 excelColLimit = 16384; %dealing with Excel limitations by printing in columns, if necessary.
@@ -51,8 +54,8 @@ try
                 '5th Percentile of Permutations',...
                 '95th Percentile of Permutations'};
     table = [results.smoothedBR;
-            results.permBR_5thP;
-            results.permBR_95thP]';
+            results.prctile05;
+            results.prctile95]';
     smoothBR_Percs = mat2csv(table);
 
     fprintf(fid,'\n');
@@ -63,6 +66,6 @@ catch ME
     fclose(fid);
     
     err = MException('BlinkGUI:fileOut', 'Error printing blink modulation summary file.');
-    err = addCause(err,ME);
+    err = addCause(err, ME);
     throw(err);
 end
