@@ -4,3 +4,4 @@ logs/
 testing/
 *.m~
 config.py
+schema.sql
