@@ -1,6 +1,9 @@
 function blinkPSTHSummary(filename, results)
-%BLINKPSTHSUMMARY -  - Write out csv summary of RESULTS (structure from
-% blinkPSTH.m) to FILENAME (overwriting any content).
+%BLINKPSTHSUMMARY - Write out csv summary of results from blinkPSTH.m
+%
+% Inputs:
+%	filename 	Name of csv file to write results to (will overwrite content)
+% 	results 	Results struct from blinkPSTH.m
 %
 % See also MAT2CSV
 
@@ -8,8 +11,10 @@ function blinkPSTHSummary(filename, results)
 % 2.23.2015
 
 fid = fopen(filename,'w');
+
 if fid<0
-    error('Could not open file %s',filename);
+    ME = MException('BlinkGUI:fileOut',sprintf('Could not create file %s',filename));
+    throw(ME);
 end
 
 try
@@ -41,7 +46,10 @@ try
 	fprintf(fid, '5th percentile of permutations:,%s\n', mat2csv(results.prctile05));
 	fprintf(fid, '95th percentile of permutations:,%s\n', mat2csv(results.prctile95));
 
-catch
-	fclose(fid);
-	error('Error printing peri-stimulus time histogram summary file.');
+catch ME
+    fclose(fid);
+    
+    err = MException('BlinkGUI:fileOut', 'Error printing peri-stimulus time histogram summary file.');
+    err = addCause(err, ME);
+    throw(err);
 end

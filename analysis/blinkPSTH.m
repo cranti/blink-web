@@ -1,43 +1,57 @@
-function results = blinkPSTH(refEvents,refCode,targetEvents,targetCode,lagMax,numPerms,varargin)
+function results = blinkPSTH(refEvents, refCode, targetEvents, targetCode, sampleRate, lagMax, numPerms, varargin)
 %BLINKPSTH - Create a peri-stimulus time histogram using a group's blink
 %data.
 %
+% TODO - document this method
+%
 % INPUTS
 %   refEvents       Cell vector, containing vectors of reference data.
-%           There can be a single set of reference data (i.e. a 1x1 cell)
-%           or reference data corresponding to each individual in
-%           targetEvents.
+%                   There can be a single set of reference data (i.e. 1x1 cell)
+%                   or reference data corresponding to each individual in
+%                   targetEvents.
 %   refCode         Value in refEvents that indicates the occurrence of a
-%           reference event.
-%   targetEvents    Matrix, with target data. TODO
-%   targetCode      Value in targetEvents that indicates the occurrence of
-%           a target event. If this variable is empty, then the target data
-%           will be treated as a continuous measure. 
-%   lagMax          Size of the lag examined on either side of the
-%           reference event. The cross correlogram size will be determined
-%           by this variable (2*lagMax + 1)
+%                   reference event.
+%   targetEvents    Matrix, with target data. TODO!! Specify.
+%   targetCode      Value in targetEvents that indicates the occurrence of a
+%                   target event. If this variable is empty, then the target
+%                   data will be treated as a continuous measure. 
+%   sampleRate      in Hz
+%   lagMax          Size of the lag examined on either side of the reference
+%                   event. The cross correlogram size will be determined
+%                   by this variable (2*lagMax + 1)
 %   numPerms        Number of permutations
 %
-%
-% Optional inputs - name/value pairs
+% Optional inputs (name/value pairs)
 %   'startFrame'        Index to start including data for (default = 1). Must
-%               be a positive integer that is <= length of the clip. Can be 
-%               used to exclude something from the beginning of your data (e.g.
-%               effects from a centering stim prior to the clip).
+%                       be a positive integer that is <= length of the clip. Can be 
+%                       used to exclude something from the beginning of your data (e.g.
+%                       effects from a centering stim prior to the clip).
 %   'refEventType'      'allFrames' (default) or 'firstFrameOnly'
 %   'targetEventType'   'allFrames' (default) or 'firstFrameOnly'
 %
 % OUTPUT 
-%   A struct with the following fields:
-%       TODO
-%
-% TODO 
-% - input checking / error handling
-% - verify
-% - Document
-% - if any vectors are horizontal, swap 'em
+%   Struct with the following fields: (TODO finish this)
+%       psth - Peri-stimulus time histogram (blinks/minute)
+%       nRefsNoEvents - Number of reference sets that had no events.
+%       nTargetPadding - Number of events in which it was necessary to pad 
+%           the target data on either side of the event. TODO
+%       RefEvents - 
+%       prctile05 - 1 x f vector with the 95th percentile blink rate found
+%           by permutation testing.
+%       prctile95 - 1 x f vector with the 5th percentile blink rate found
+%           by permutation testing.
 % 
-% See also: BLINKPSTHSUMMARY, BLINKPSTHFIGURES
+%       inputs - struct with information about the input variables:
+%           numIndividuals - number of individuals in targetEvents
+%           dataLen - length of data
+%           numPerms - number of permutations
+%           refEventType - reference event type
+%           refCode - reference code
+%           targetEventType - target event type
+%           targetCode - target code
+%           startFrame - start frame
+% 
+% SEE ALSO: BLINKPSTHSUMMARY, BLINKPSTHFIGURES
 
 % Written by Carolyn Ranti
 % 2.23.2015
@@ -63,6 +77,8 @@ refEventType = 'allFrames';
 targetEventType = 'allFrames';
 
 % Parse optional inputs and check
+assert(mod(length(varargin),2)==0, 'Error - odd number of optional parameters (must be name, value pairs)');
+
 for v = 1:2:length(varargin)
    switch varargin{v}
        case 'refEventType'
@@ -81,7 +97,6 @@ end
 if strcmpi(targetEventType,'firstFrameOnly')
     assert(~isempty(targetCode),'Cannot use continuous measure (i.e. empty targetCode) when targetEventType = firstFrameOnly');
 end
-
 
 %% Find reference events in the sets
 allRefFrameSets = getRefFrameSets(refEvents, refCode, refEventType);
@@ -112,7 +127,7 @@ end
 results.prctile05 = prctile(permResults,5);
 results.prctile95 = prctile(permResults,95);
 
-%% Add inputs to results
+%% Add inputs to results struct
 results.inputs = struct();
 results.inputs.numIndividuals = numPpl;
 results.inputs.numFrames = dataLen;
@@ -268,11 +283,11 @@ function results = makePSTH(allRefFrameSets, allTargetEvents, lagMax)
 
     % Average cross-corr counters across all target group participants. 
     % This is our group average cross-correlation.
-    crossCorr = nanmean(AllCrossCorr,1);
+    crossCorr = nanmean(AllCrossCorr,1)*sampleRate*60; %avg # blinks/min
 
     %% results struct
     results = struct();
-    results.crossCorr = crossCorr;
+    results.psth = crossCorr;
     results.nRefsNoEvents = nRefsNoEvents;
     results.nTargetPadding = nTargetPadding;
 end

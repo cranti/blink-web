@@ -19,16 +19,14 @@ function [Y, optW] = convWindow(blinkInput, W)
 
 % Carolyn Ranti
 % Updated 2.18.15
-% BUG FIX: Y must have an odd number of values for smoothing to work
 
- 
 
 % find col indices of all positive entries -- formerly findBlinkIndices()
 [~,blinkInds] = find(blinkInput>0);
     
 %find optimum bandwidth (optW, a standard deviation of a normal density
 %function), passing in range for W if provided.
-if nargin==1
+if nargin==1 || isempty(W)
     [optW, ~, ~] = sskernel(blinkInds); 
 else
     [optW, ~, ~] = sskernel(blinkInds, W); 
@@ -36,7 +34,8 @@ end
 
 % gaussian window to convolve with data
 xrange = -4*optW:1:4*optW;
-if mod(length(xrange),2)==0
+% xrange must have an odd number of values for smoothing to work
+if mod(length(xrange),2)==0 
     xrange = [xrange, max(xrange)+1];
 end
     

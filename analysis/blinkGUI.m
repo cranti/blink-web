@@ -2,8 +2,10 @@ function blinkGUI()
 DEV = true;
 
 % Add inputs:
-    % sampleRate
+    % Figure format
+    % sampleRate (just position)
     % advanced options: W
+    % everything for psth
 
 % > have multiple analysis types available in one GUI, and change input
 %       fields according to the analysis type (uitoggletool?)
@@ -21,7 +23,7 @@ DEV = true;
 % > what to do upon closing the figure? (fclose all, etc)
 % > no resizing?
 % > option to save the figures/remake them without rerunning the analysis
-
+% > save mat file with outputs?
 
 % NOTE: input specs have changed slightly: subjects should each have a
 % column, and frames should be in rows (better for excel limits).
@@ -40,8 +42,10 @@ if DEV
 end
 
 
-
 %% GUI
+
+%settings
+bkgdcolor = [215/256 230/256 230/256];
 
 %MAIN FIGURE
 %Parent figure width and height
@@ -55,7 +59,7 @@ hMain = figure('units','pixels',...
     'HandleVisibility','callback',...
     'numbertitle','off',...
     'name', 'Blink Analyses',...
-    'Color',[215/256 230/256 230/256]);
+    'Color',bkgdcolor);
 
 set(hMain,'DefaultUicontrolFontName','Helvetica',...
     'DefaultUicontrolFontSize',15,...
@@ -102,7 +106,7 @@ hOutputFileLabel = uicontrol(hMain,'Style','text',...
     'Position',[10/W 520/H 150/W 30/H],...
     'FontWeight','bold',...
     'String','Enter name for output file:',...
-    'BackgroundColor',[215/256 230/256 230/256]);
+    'BackgroundColor',bkgdcolor);
 
 %Editable text box where output filename is entered
 hOutputFile = uicontrol(hMain,'Style','edit',...
@@ -117,7 +121,7 @@ hNumPermsLabel = uicontrol(hMain,'Style','text',...
     'Position',[10/W 475/H 175/W 30/H],...
     'FontWeight','bold',...
     'String','Number of permutations:',...
-    'BackgroundColor',[215/256 230/256 230/256]);
+    'BackgroundColor',bkgdcolor);
 
 % Editable text box where number of permutations is entered
 hNumPerms = uicontrol(hMain,'Style','edit',...
@@ -125,9 +129,19 @@ hNumPerms = uicontrol(hMain,'Style','edit',...
     'Position',[180/W 475/H 200/W 30/H]);
 
 
-%TODO - label and text box for sample rate
-% sampleRate = 15;
+%TODO - edit position
+% % Label for sample rate
+% hSampleRateLabel = uicontrol(hMain,'Style','text',...
+%     'Units','normalized',...
+%     'Position',[],...
+%     'FontWeight','bold',...
+%     'String','Enter sample rate (Hz)',...
+%     'BackgroundColor',bkgdcolor);
 
+% %Editable text box where sample rate is entered
+% hSampleRate = uicontrol(hMain,'Style','edit',...
+%     'Units','normalized',...
+%     'Position',[]);
 
 %Axes to plot selected data
 hPlotAxes = axes('Parent',hMain, ...
@@ -188,7 +202,7 @@ GoButton = uicontrol(hMain,'Style','pushbutton',...
 
 %% Callback functions
 
-    %read in input file
+    %read in input file and plot
     function LoadBlinks(varargin)
         [input_file, PathName] = uigetfile('*.csv','Choose a csv file with blink data');
         
@@ -206,7 +220,6 @@ GoButton = uicontrol(hMain,'Style','pushbutton',...
         if value==0
             return
         end
-        %formatType = 'BinaryMat';
         
         if strcmpi(formatType,'3col')
             prompt = {'Enter data length:'};
@@ -219,7 +232,7 @@ GoButton = uicontrol(hMain,'Style','pushbutton',...
                 return
             else
                 sampleLen = str2num(answer{1});
-                if sampleLen<0
+                if sampleLen<=0
                     errordlg('Data length must be greater than 0.');
                     return
                 end
@@ -241,9 +254,14 @@ GoButton = uicontrol(hMain,'Style','pushbutton',...
         set(hListBlinkFile,'String',input_file,'Value',1,'FontAngle','normal');
         
         %Plot instantaneous blink rate
-        cla(hPlotAxes,'reset');
-        plotInstBR(rawBlinks, sampleRate, hPlotAxes);
-        
+        try
+            cla(hPlotAxes,'reset');
+            plotInstBR(rawBlinks, sampleRate, hPlotAxes);
+        catch ME
+            err = MException('BlinkGUI:plotting','Error plotting instantaneous blink rate.');
+            err = addCause(err, ME);
+            gui_error(err);
+        end
     end
 
     %choose output directory
@@ -257,41 +275,39 @@ GoButton = uicontrol(hMain,'Style','pushbutton',...
     % Run BlinkMod analysis (blinkPerm.m), create/save figures and summary csv file
     function RunBlinkPerm(varargin)
         
-        errordlg_msg = {};
+        error_msgs = {};
         if isempty(rawBlinks)
-            errordlg_msg{end+1} = '\tNo data was loaded.';
+            error_msgs{end+1} = '\tNo data was loaded.';
         end
         
         %get number of permutations and check it
         numPerms = get(hNumPerms,'String');
         
         if isempty(numPerms)
-            errordlg_msg{end+1} = '\tNumber of permutations was not specified.';
+            error_msgs{end+1} = '\tNumber of permutations was not specified.';
         elseif isempty(str2double(numPerms)) %returns [] if not a valid number
-            errordlg_msg{end+1} = '\tNumber of permutations must be a number';
+            error_msgs{end+1} = '\tNumber of permutations must be a number';
         else
             numPerms = int8(str2double(numPerms));
         end
         
-        %get sample rate and check it
-%         sampleRate = get(hSampleRate,'String');
+        %get sample rate and check it %TODO
+        sampleRate = get(hSampleRate,'String');
         if isempty(sampleRate)
-            errordlg_msg{end+1} = '\tSample rate of the data was not specified.';
+            error_msgs{end+1} = '\tSample rate of the data was not specified.';
         end
-        
         
         if isempty(outputDir)
-            errordlg_msg{end+1} = '\tFolder to save results was not specified.';
+            error_msgs{end+1} = '\tFolder to save results was not specified.';
         end
         
-        
-        if ~isempty(errordlg_msg)
-            msg = strjoin(errordlg_msg,'\n');
-            errordlg(sprintf(msg));
+        % if any of the conditions were not met, create error dialogue with messages and return
+        if ~isempty(error_msgs)
+            dlg_msg = strjoin(error_msgs,'\n');
+            errordlg(sprintf(dlg_msg));
             return
         end
         
-            
         %get summary filename
         summary_file = get(hOutputFile,'String');
 
@@ -301,10 +317,10 @@ GoButton = uicontrol(hMain,'Style','pushbutton',...
            set(hOutputFile,'String',summary_file);
         end
 
-
-        % run the analysis
         %TODO - get Wvalue from the GUI instead of hard-coding here
         Wrange = 4;
+        
+        % run the analysis
         try
             results = blinkPerm(numPerms, rawBlinks, sampleRate, Wrange);
         catch ME
@@ -341,8 +357,101 @@ GoButton = uicontrol(hMain,'Style','pushbutton',...
             blinkPermSummary(summary_file_full, results);
         catch ME
             gui_error(ME);
+        end     
+    end
+
+    function RunBlinkPSTH(varargin):
+
+        error_msgs = {};
+        if isempty(rawBlinks)
+            error_msgs{end+1} = '\tNo data was loaded.';
+        end
+
+        %TODO get reference events
+
+        %TODO get target and reference data types
+        %TODO get target and reference data codes
+        %TODO get start frames
+        %TODO get lag max
+        
+        %get number of permutations and check it
+        numPerms = get(hNumPerms,'String');
+        
+        if isempty(numPerms)
+            error_msgs{end+1} = '\tNumber of permutations was not specified.';
+        elseif isempty(str2double(numPerms)) %returns [] if not a valid number
+            error_msgs{end+1} = '\tNumber of permutations must be a number';
+        else
+            numPerms = int8(str2double(numPerms));
         end
         
+        %get sample rate and check it
+        % TODO get sample rate -- sampleRate = get(hSampleRate,'String');
+        % if isempty(sampleRate)
+        %     error_msgs{end+1} = '\tSample rate of the data was not specified.';
+        % end
+        
+        if isempty(outputDir)
+            error_msgs{end+1} = '\tFolder to save results was not specified.';
+        end
+        
+        % if any of the conditions were not met, create error dialogue with messages and return
+        if ~isempty(error_msgs)
+            dlg_msg = strjoin(error_msgs,'\n');
+            errordlg(sprintf(dlg_msg));
+            return
+        end
+        
+        %get summary filename
+        summary_file = get(hOutputFile,'String');
+
+        if isempty(summary_file)
+           warndlg('You did not specify a name for the summary file -- results will be saved in the output directory in summary.csv');
+           summary_file = 'summary.csv';
+           set(hOutputFile,'String',summary_file);
+        end
+
+        %%
+        % run the analysis
+        try
+            results = blinkPSTH(refEvents,refCode,targetEvents,targetCode,lagMax,numPerms,...
+                'startFrame',startFrame,'refEventType',refEventType,'targetEventType',targetEventType);
+        catch ME
+            gui_error(ME);
+            return
+        end
+
+        % create figures
+        %TODO - get fig format from GUI instead of hardcoding here
+        figFormat = 'pdf';
+        try
+            blinkPSTHFigures(outputDir, results, figFormat); % [ax1];
+        catch ME 
+            gui_error(ME);
+        end
+
+        % summary file
+        % if the summary file name isn't csv, change it
+        if isempty(regexp(summary_file, '.csv$', 'once'))
+            temp = strsplit(summary_file,'.');
+            if length(temp)==1
+                summary_file = [summary_file,'.csv'];
+            else
+                summary_file = [temp{1},'.csv'];
+            end
+            set(hOutputFile,'String',summary_file);
+        end
+
+        % get the full path for the csv summary file
+        summary_file_full = dirFileJoin(outputDir, summary_file);
+
+        % output csv summary file
+        try
+            blinkPSTHSummary(summary_file_full, results);
+        catch ME
+            gui_error(ME);
+        end  
+
     end
 
 end
