@@ -11,9 +11,9 @@ if nargin==2
     figure()
     axesH = gca;
 end
+hold(axesH,'on');
 
 plot(axesH, instBR, 'k');
-hold on
 title('Instantaneous Blink Rate')
 xlabel('Frame')
 ylabel('Blink Rate (blinks/min)')
