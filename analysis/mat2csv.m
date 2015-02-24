@@ -1,13 +1,19 @@
 function csvReady = mat2csv(mat)
-%MAT2CSV
-% Convert a matrix of numbers to a string that is ready to print into a csv
-% file. 
+%MAT2CSV Convert a matrix of numeric data into a csv-formatted string
+% 
+% INPUT:
+%   mat         Numeric matrix
+% 
+% OUTPUT:
+%   csvReady    String with data from MAT. Commas delimit columns and a new
+%               line (\n) delimits rows. 
 %
-% String has commas delimiting columns, and a new line (\n) delimiting
-% rows. Use fprintf to print the resulting string into a file.
+% Use fprintf to print the resulting string into a file.
+%
+% See also CSVWRITE, FPRINTF
 
 % Carolyn Ranti
-% 2.18.2015
+% 2.24.2015 documentation
 
 cellVer = num2cell(mat);
 cellVer = cellfun(@num2str,cellVer,'UniformOutput',false);

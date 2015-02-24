@@ -1,8 +1,12 @@
 function plotInstBR(rawBlinks, sampleRate, axesH)
-%PLOTINSTBR - Plot instantaneous blink rate in an axis (axesH) given raw
-% blink data (rawBlinks) and a sample rate (sampleRate).
+%PLOTINSTBR - 
 %
+% Plot instantaneous blink rate in an axis (axesH) given raw blink data
+% (rawBlinks) and a sample rate (sampleRate).
+%
+
 % Carolyn Ranti
+% 2.24.2015
 
 fractBlinks = raw2fractBlinks(rawBlinks);
 instBR = calcInstBR(fractBlinks, sampleRate);

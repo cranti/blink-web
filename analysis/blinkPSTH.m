@@ -7,7 +7,7 @@ function results = blinkPSTH(refEvents, refCode, targetEvents, targetCode, sampl
 % INPUTS
 %   refEvents       Cell vector, containing vectors of reference data.
 %                   There can be a single set of reference data (i.e. 1x1 cell)
-%                   or reference data corresponding to each individual in
+%                   or one set of reference data for each individual in
 %                   targetEvents.
 %   refCode         Value in refEvents that indicates the occurrence of a
 %                   reference event.
@@ -22,10 +22,11 @@ function results = blinkPSTH(refEvents, refCode, targetEvents, targetCode, sampl
 %   numPerms        Number of permutations
 %
 % Optional inputs (name/value pairs)
-%   'startFrame'        Index to start including data for (default = 1). Must
-%                       be a positive integer that is <= length of the clip. Can be 
-%                       used to exclude something from the beginning of your data (e.g.
-%                       effects from a centering stim prior to the clip).
+%   'startFrame'        Index to start including data for (default = 1).
+%                       Must be a positive integer that is <= length of the
+%                       clip. Can be used to exclude something from the
+%                       beginning of your data (e.g. effects from a
+%                       centering stim prior to the clip).
 %   'refEventType'      'allFrames' (default) or 'firstFrameOnly'
 %   'targetEventType'   'allFrames' (default) or 'firstFrameOnly'
 %
@@ -62,10 +63,15 @@ function results = blinkPSTH(refEvents, refCode, targetEvents, targetCode, sampl
 [numPpl, dataLen] = size(targetEvents);
 numRefSets = length(refEvents);
 
-if numRefSets > 1 && numRefSets < numPpl
+if numRefSets > 1 && numRefSets ~= numPpl
     error('If more than one reference set is provided, there must be exactly one per individual.')
 end
 
+%TODO - each reference set must match only the corresponding target data
+%(they can all be different lengths from each other) - fix this error check
+% TODO - also, change the input format for the target data to match
+% reference events (cell with vectors)
+% TODO - readInTargetData
 refLen = unique(cellfun(@length, refEvents));
 if length(refLen)>1 || refLen ~= dataLen
     error('Target data and reference events must be the same length.')
@@ -79,6 +85,7 @@ targetEventType = 'allFrames';
 % Parse optional inputs and check
 assert(mod(length(varargin),2)==0, 'Error - odd number of optional parameters (must be name, value pairs)');
 
+% TODO - case insensitive
 for v = 1:2:length(varargin)
    switch varargin{v}
        case 'refEventType'
@@ -94,9 +101,6 @@ for v = 1:2:length(varargin)
    end
 end
 
-if strcmpi(targetEventType,'firstFrameOnly')
-    assert(~isempty(targetCode),'Cannot use continuous measure (i.e. empty targetCode) when targetEventType = firstFrameOnly');
-end
 
 %% Find reference events in the sets
 allRefFrameSets = getRefFrameSets(refEvents, refCode, refEventType);
@@ -146,8 +150,8 @@ end
 % Output cell of reference frame sets - each set (row in refEvents) turns into 
 % a logical vector (in it's own entry)
 function allRefFrameSets = getRefFrameSets(refEvents, refCode, refEventType)
-    numRefSets = size(refEvents,1); % each row is a reference set
-    allRefFrameSets = cell(numRefSets); % to store reference event frames for each ref group participant.
+    numRefSets = length(refEvents); % each entry is a reference set
+    allRefFrameSets = cell(numRefSets,1); % to store reference event frames for each ref group participant.
     
     for ref = 1:numRefSets
         
@@ -158,8 +162,9 @@ function allRefFrameSets = getRefFrameSets(refEvents, refCode, refEventType)
             temp = diff([0,(refEvents{ref} == refCode)]);
             refFrames = find(temp==1);
         end
+        %TODO - bwlabel or bwlabeln to find middle frame
         
-        refFrames = refFrames(refFrames >= startFrame);
+        refFrames = refFrames(refFrames >= startFrame); %TODO - need to pass in startframe
 
         %store reference events in a cell
         allRefFrameSets{ref} = refFrames; 

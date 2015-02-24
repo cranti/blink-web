@@ -1,5 +1,12 @@
 function instBR = calcInstBR(fractBlinks, sampleRate)
-%CALCINSTBR
+%CALCINSTBR Calculate the instantaneous blink rate of a group
+%
+% INPUT:
+%   fractBlinks Fractional blink data in n x f matrix (TODO - finish doc)
+%   sampleRate  Sample rate of data in fractBlinks (in Hz) 
+%
+% OUTPUT:
+%   instBR      Instantaneous blink rate
 % 
 % Calculate instantaneous blink rate of a group of people, using fractional
 % blink data (fractBlinks: rows = subjects, columns = samples, e.g. frames)

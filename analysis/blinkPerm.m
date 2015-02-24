@@ -2,6 +2,7 @@ function [results] = blinkPerm(numPerms, rawBlinks, sampleRate, W)
 %BLINKPERM
 %
 % TODO - document this method
+% TODO - global variable that allows for gui progress update?
 %
 % Permutation testing with a group's blink data (fractBlinks) - for the
 % number of permutations specified (numPerms), circularly shift each

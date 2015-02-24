@@ -2,18 +2,18 @@ function [blinkMat,subjOrder] = blink3ColConvert(blinks, sampleLen)
 %BLINK3COLCONVERT - Convert 3 column input into a matrix of binary blink
 %	data, with one person's data per row.
 %
-% Inputs: 
+% INPUT
 % 	blinks 		3 column matrix. See below for details.
 %	sampleLen 	length of the clip sampled. Determines number of columns
 % 				in the output matrix.
 %
-% Outputs:
+% OUTPUT
 % 	blinks 		n x f matrix (n = subjects, f = frames) with binary blink
 %       		data (1 = blink, 0 = no blink, NaN = lost data)
 % 	subjOrder 	order of subjects, matching the rows of blinkMat. Order is
 %       		preserved from input.
 %
-% Notes:
+% NOTES
 %	The input matrix BLINKS contains blink data for a group of people, with
 % 	one row per blink. In each row, the 1st column contains a unique subject 
 % 	identifier (a numeric value), the 2nd column contains the start frame of

@@ -2,17 +2,22 @@ function [Y, optW] = convWindow(blinkInput, W)
 %CONVWINDOW - Return a gaussian window to convolve with blink data (in 
 % order to smooth)
 %
-% Uses sskernel to find the optimum bandwidth for the data
-%
 % INPUTS:
-%   Blink data - matrix or vector of blink data. This can be binary data or
-%       fractional blink data, as long as blink frames are indicated by
-%       positive values and non-blink frames are indicated by values <=0 or
-%       NaNs.
-%   W (optional) - a range of values for sskernel to test in order to find
-%       the optimum bandwidth size. Default value that sskernel sets is
-%       W = logspace(log10(2*dx),log10((x_max - x_min)),50).
+%   Blink data  Matrix or vector of blink data. This can be binary data or
+%               fractional blink data, as long as blink frames are
+%               indicated by positive values and non-blink frames are
+%               indicated by values <=0 or NaNs.
+%   W           Optional. A range of values for sskernel to test in order
+%               to find the optimum bandwidth size. Default value that 
+%               sskernel sets is: 
+%                   W = logspace(log10(2*dx),log10((x_max - x_min)),50).
 %
+% OUTPUT:
+%   Y
+%   optW
+%
+% TODO - finish 
+% Uses sskernel to find the optimum bandwidth for the data
 % * This script is the timing bottleneck for permutation testing
 %
 % See also SSKERNEL

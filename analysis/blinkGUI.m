@@ -3,7 +3,6 @@ DEV = true;
 
 % Add inputs:
     % Figure format
-    % sampleRate (just position)
     % advanced options: W
     % everything for psth
 
@@ -52,7 +51,8 @@ bkgdcolor = [215/256 230/256 230/256];
 W=610;
 H=650;
 
-hMain = figure('units','pixels',...
+hMain = figure(...
+    'units','pixels',...
     'position',[100 100 W H],...
     'MenuBar', 'none',...
     'Toolbar','none',...
@@ -61,14 +61,16 @@ hMain = figure('units','pixels',...
     'name', 'Blink Analyses',...
     'Color',bkgdcolor);
 
-set(hMain,'DefaultUicontrolFontName','Helvetica',...
+set(hMain,...
+    'DefaultUicontrolFontName','Helvetica',...
     'DefaultUicontrolFontSize',15,...
     'DefaultUicontrolFontUnits','pixels')
 
 
 %LOAD BLINK CSV
 %Button that brings up menu to select a file
-hLoadBlinkFile = uicontrol(hMain,'Style','pushbutton',...
+hLoadBlinkFile = uicontrol(hMain,...
+    'Style','pushbutton',...
     'String','Load Blink csv',...
     'Units','normalized',...
     'Position',[10/W 610/H 150/W 30/H],...
@@ -76,32 +78,44 @@ hLoadBlinkFile = uicontrol(hMain,'Style','pushbutton',...
     'Callback',@LoadBlinks);
 
 %Displays the name of the file that has been loaded
-hListBlinkFile = uicontrol(hMain,'Style','text',...
+hListBlinkFile = uicontrol(hMain,...
+    'Style','text',...
     'Units','normalized',...
     'Position',[180/W 610/H 200/W 30/H],...
     'String','Blink Input File',...
     'FontAngle','italic');
 
+% Sample rate label (set by pop up input dialog)
+hSampleRateLabel = uicontrol(hMain,...
+    'Style','text',...
+    'Units','normalized',...
+    'Position',[400/W 610/H 150/W 30/H],...
+    'String','',...
+    'FontAngle','italic');
+
 %CHOOSE WHERE TO SAVE RESULTS FILES
 %Output directory
-hChooseOutputDir = uicontrol(hMain,'Style','pushbutton',...
+hChooseOutputDir = uicontrol(hMain,...
+    'Style','pushbutton',...
     'String','Choose output directory',...
     'Units','normalized',...
     'Position',[10/W 565/H 150/W 30/H],...
     'UserData',0,... %indicates whether dir has been selected
     'Callback',@ChooseOutputDir);
 
-%Editable text box where output filename is entered
-hListOutputFile = uicontrol(hMain,'Style','text',...
+% Text box where output directory is displayed
+hListOutputFile = uicontrol(hMain,...
+    'Style','text',...
     'Units','normalized',...
-    'Position',[180/W 565/H 200/W 30/H],...
+    'Position',[180/W 565/H 400/W 30/H],...
     'String','Output Directory',...
     'FontAngle','italic');
 
 
 %TYPE NAME OF OUTPUT FILE
 %Label for edit box where output filename can be entered
-hOutputFileLabel = uicontrol(hMain,'Style','text',...
+hOutputFileLabel = uicontrol(hMain,...
+    'Style','text',...
     'Units','normalized',...
     'Position',[10/W 520/H 150/W 30/H],...
     'FontWeight','bold',...
@@ -109,14 +123,16 @@ hOutputFileLabel = uicontrol(hMain,'Style','text',...
     'BackgroundColor',bkgdcolor);
 
 %Editable text box where output filename is entered
-hOutputFile = uicontrol(hMain,'Style','edit',...
+hOutputFile = uicontrol(hMain,...
+    'Style','edit',...
     'Units','normalized',...
     'Position',[180/W 520/H 200/W 30/H]);
 
 
 % NUMBER OF PERMUTATIONS
 % Label
-hNumPermsLabel = uicontrol(hMain,'Style','text',...
+hNumPermsLabel = uicontrol(hMain,...
+    'Style','text',...
     'Units','normalized',...
     'Position',[10/W 475/H 175/W 30/H],...
     'FontWeight','bold',...
@@ -124,34 +140,22 @@ hNumPermsLabel = uicontrol(hMain,'Style','text',...
     'BackgroundColor',bkgdcolor);
 
 % Editable text box where number of permutations is entered
-hNumPerms = uicontrol(hMain,'Style','edit',...
+hNumPerms = uicontrol(hMain,...
+    'Style','edit',...
     'Units','normalized',...
     'Position',[180/W 475/H 200/W 30/H]);
 
 
-%TODO - edit position
-% % Label for sample rate
-% hSampleRateLabel = uicontrol(hMain,'Style','text',...
-%     'Units','normalized',...
-%     'Position',[],...
-%     'FontWeight','bold',...
-%     'String','Enter sample rate (Hz)',...
-%     'BackgroundColor',bkgdcolor);
-
-% %Editable text box where sample rate is entered
-% hSampleRate = uicontrol(hMain,'Style','edit',...
-%     'Units','normalized',...
-%     'Position',[]);
-
 %Axes to plot selected data
 hPlotAxes = axes('Parent',hMain, ...
-                'Units', 'normalized', ...
-                'HandleVisibility','callback', ...
-                'Position',[25/W 250/H 550/W 200/H]);
+    'Units', 'normalized', ...
+    'HandleVisibility','callback', ...
+    'Position',[50/W 250/H 500/W 200/H]);
 
 %Button to run the analysis
 %ANALYZE BUTTON
-GoButton = uicontrol(hMain,'Style','pushbutton',...
+GoButton = uicontrol(hMain,...
+    'Style','pushbutton',...
     'String','Blink Mod',...
     'FontWeight','bold',...
     'BackgroundColor',[.6 .95 .6],...
@@ -216,17 +220,20 @@ GoButton = uicontrol(hMain,'Style','pushbutton',...
         options = {'Binary blink matrix','BinaryMat';
                     'Three column format','3col'};
         [formatType, value] = twoRadioDlg(options);
+        
         %if user cancels
         if value==0
             return
         end
+
+        %formatType='BinaryMat';
         
+        %Get data length if format is 3col
         if strcmpi(formatType,'3col')
             prompt = {'Enter data length:'};
             dlg_title = '3 Column Format';
             num_lines = 1;
             answer = inputdlg(prompt,dlg_title, num_lines);
-            
             
             if isempty(answer)
                 return
@@ -243,7 +250,23 @@ GoButton = uicontrol(hMain,'Style','pushbutton',...
             error('Unrecognized format type');
         end
         
-        %try to read in file
+        %Get sample rate
+        prompt = {'Enter sample rate (frames/sec):'};
+        dlg_title = 'Sample Rate';
+        num_lines = 1;
+        answer = inputdlg(prompt,dlg_title, num_lines);
+        
+        if isempty(answer)
+            return
+        else
+            sampleRate = str2num(answer{1});
+            if sampleRate<=0
+                errordlg('Sample rate must be greater than 0.');
+                return
+            end
+        end
+    
+        % Read in file
         try
             rawBlinks = readInBlinks(input_file_full, formatType, sampleLen);
         catch ME
@@ -251,8 +274,10 @@ GoButton = uicontrol(hMain,'Style','pushbutton',...
             return
         end
         
+        % List input filename and sample rate in the GUI
         set(hListBlinkFile,'String',input_file,'Value',1,'FontAngle','normal');
-        
+        set(hSampleRateLabel,'String',sprintf('Sample rate: %.2f',sampleRate),'FontAngle','normal');
+            
         %Plot instantaneous blink rate
         try
             cla(hPlotAxes,'reset');
@@ -275,6 +300,7 @@ GoButton = uicontrol(hMain,'Style','pushbutton',...
     % Run BlinkMod analysis (blinkPerm.m), create/save figures and summary csv file
     function RunBlinkPerm(varargin)
         
+        %%
         error_msgs = {};
         if isempty(rawBlinks)
             error_msgs{end+1} = '\tNo data was loaded.';
@@ -291,16 +317,49 @@ GoButton = uicontrol(hMain,'Style','pushbutton',...
             numPerms = int8(str2double(numPerms));
         end
         
-        %get sample rate and check it %TODO
-        sampleRate = get(hSampleRate,'String');
+        % Check sample rate
         if isempty(sampleRate)
             error_msgs{end+1} = '\tSample rate of the data was not specified.';
         end
         
-        if isempty(outputDir)
+        if isempty(outputDir) || isequal(outputDir, 0)
             error_msgs{end+1} = '\tFolder to save results was not specified.';
+        elseif ~isdir(outputDir)
+            error_msgs{end+1} = '\tOutput directory is invalid.';
         end
         
+        %TODO - get Wvalue from the GUI instead of hard-coding here
+        Wrange = '';
+        
+        %TODO - wrap in try/catch?
+        if ~isempty(Wrange)
+            Ws = strsplit(Wrange, ':');
+            Wvalues = [];
+            for i = 1:length(Ws)
+                [Wvalues(i), status] = str2num(Ws);
+                if status==1
+                    errordlg('Invalid W input: must be a numeric value or range of values (e.g. 1:10 or 1:2:10)');
+                    return
+                end 
+            end
+            
+            if length(Wvalues)==1
+                Wrange = Wvalues;
+            elseif length(Wvalues)==2
+                Wrange = Wvalues(1):Wvalues(2);
+            elseif length(Wvalues)==3
+                Wrange = Wvalues(1):Wvalues(2):Wvalues(3);
+            else
+                errordlg('Invalid W input: too many numbers provided. Must be a numeric value or range of values (e.g. 1:10 or 1:2:10)');
+                return
+            end    
+        end
+        
+
+        %TODO - get fig format from GUI instead of hardcoding here (dropdown)
+        figFormat = 'pdf';
+            
+            
         % if any of the conditions were not met, create error dialogue with messages and return
         if ~isempty(error_msgs)
             dlg_msg = strjoin(error_msgs,'\n');
@@ -308,7 +367,7 @@ GoButton = uicontrol(hMain,'Style','pushbutton',...
             return
         end
         
-        %get summary filename
+        %% get summary filename
         summary_file = get(hOutputFile,'String');
 
         if isempty(summary_file)
@@ -317,20 +376,19 @@ GoButton = uicontrol(hMain,'Style','pushbutton',...
            set(hOutputFile,'String',summary_file);
         end
 
-        %TODO - get Wvalue from the GUI instead of hard-coding here
-        Wrange = 4;
-        
-        % run the analysis
+        %% run the analysis
         try
-            results = blinkPerm(numPerms, rawBlinks, sampleRate, Wrange);
+            if isempty(Wrange)
+                results = blinkPerm(numPerms, rawBlinks, sampleRate);
+            else
+                results = blinkPerm(numPerms, rawBlinks, sampleRate, Wrange);
+            end
         catch ME
             gui_error(ME);
             return
         end
 
         % create figures
-        %TODO - get fig format from GUI instead of hardcoding here
-        figFormat = 'pdf';
         try
             blinkPermFigures(outputDir, results, figFormat); %, [ax1,ax2,ax3]);
         catch ME 
@@ -349,18 +407,27 @@ GoButton = uicontrol(hMain,'Style','pushbutton',...
             set(hOutputFile,'String',summary_file);
         end
 
-        % get the full path for the csv summary file
-        summary_file_full = dirFileJoin(outputDir, summary_file);
-
         % output csv summary file
         try
+            % get the full path for the csv summary file
+            summary_file_full = dirFileJoin(outputDir, summary_file);
+            
             blinkPermSummary(summary_file_full, results);
         catch ME
             gui_error(ME);
         end     
+        
+        % save .mat file in the outputDir
+        try
+            % full path for a mat file:
+            mat_file_full = dirFileJoin(outputDir,'blinkPerm.mat');
+            save(mat_file_full, 'results');
+        catch ME
+            gui_error(ME);
+        end
     end
 
-    function RunBlinkPSTH(varargin):
+    function RunBlinkPSTH(varargin)
 
         error_msgs = {};
         if isempty(rawBlinks)
@@ -368,7 +435,6 @@ GoButton = uicontrol(hMain,'Style','pushbutton',...
         end
 
         %TODO get reference events
-
         %TODO get target and reference data types
         %TODO get target and reference data codes
         %TODO get start frames
