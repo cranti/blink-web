@@ -1,28 +1,17 @@
 function [results] = blinkPerm(numPerms, rawBlinks, sampleRate, W) 
-%BLINKPERM
-%
-% TODO - document this method
-%
-% Permutation testing with a group's blink data (fractBlinks) - for the
-% number of permutations specified (numPerms), circularly shift each
-% subject's data by some random amount and calculate the smoothed blink for
-% the group. User must specify the sample rate in Hz (sampleRate).
-%
-% Calculates the 5th and the 95th percentiles of the permuted data. Moments
-% of significant blink inhibition are the frames in which the smoothed
-% blink rate of the group is less than the 5th percentile of the permuted
-% data. Moments of significantly increased blinking are the frames in which
-% the smoothed blink rate of the group is greater than the 95th percentile.
+%BLINKPERM - Identify moments a group is blinking significantly more or less
 %
 % INPUT:
 %   numPerms    Number of permutations to run for the statistical test
 %   rawBlinks   n x f matrix (n = subjects, f = frames) with binary blink
 %               data (1 = blink, 0 = no blink, NaN = lost data)
 %   sampleRate  Sample rate (in Hz) 
-%   W           Optional -  
+%   W           Optional - bandwidth (standard deviation) for Gauss density
+%				function used to smooth data. This can be a single value or 
+%				a vector of values that will be tested.
 % 
 % OUTPUT:
-%   Struct with the following fields:
+%   results		Struct with the following fields:
 %       smoothedBR - 1 x f vector with smoothed instantaneous blink rate
 %       	for the group
 %       decreasedBlinking - vector with frames in which the smoothed blink
@@ -35,15 +24,35 @@ function [results] = blinkPerm(numPerms, rawBlinks, sampleRate, W)
 %           by permutation testing.
 %       prctile95 - 1 x f vector with the 95th percentile blink rate
 %          found by permutation testing.
-%       optW - Optimal W parameter found for smoothing kernel by convWindow
+%       optW - Optimal W parameter used to smooth data
 %       inputs - struct with information about the input variables
 %           (number of individuals in rawBlinks, length of data, number of
 %           permutations, sample rate)
 %
+% The smoothed instantaneous blink rate of a group of individuals is 
+% compared to the 5th and 95th percentile of a permutation test, in order
+% to identify moments when the group blink rate is significantly higher or 
+% lower. Smoothed instantaneous blink rate is calculated by convolving the 
+% average blink rate in each frame with a Gaussian kernel. The kernel size
+% is determined using SSKERNEL
+%
+% In the permutation testing procedure, each subject's data is circularly
+% shifted by a random amount before calculating the smoothed blink rate.
+% Permutation testing with a group's blink data (fractBlinks) - for the
+% number of permutations specified (numPerms), circularly shift each
+% subject's data by some random amount and calculate the smoothed blink for
+% the group. User must specify the sample rate in Hz (sampleRate).
+%
+% Calculates the 5th and the 95th percentiles of the permuted data. Moments
+% of significant blink inhibition are the frames in which the smoothed
+% blink rate of the group is less than the 5th percentile of the permuted
+% data. Moments of significantly increased blinking are the frames in which
+% the smoothed blink rate of the group is greater than the 95th percentile.
+%
 % SEE ALSO: SMOOTHBLINKRATE
 
 % Carolyn Ranti
-% 2.23.2015
+% 2.27.2015
 
 
 %% Convert binary blink input to fractional blinks
