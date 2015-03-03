@@ -1,5 +1,8 @@
 function [results] = blinkPerm(numPerms, rawBlinks, sampleRate, W) 
-%BLINKPERM - Identify moments a group is blinking significantly more or less
+%BLINKPERM
+%
+% TODO - document this method
+% TODO - global variable that allows for gui progress update?
 %
 % INPUT:
 %   numPerms    Number of permutations to run for the statistical test

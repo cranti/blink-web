@@ -14,7 +14,7 @@
 % NOTES
 %   - Consecutive blink frames are considered a single blink. If lost data
 %     disrupts the 1s, it will be considered two blinks.
-%
+
 % Carolyn Ranti
 % 12.3.2014
 
@@ -49,6 +49,3 @@ for r = 1:size(blinks,1)
     end
     
 end
-
-
-

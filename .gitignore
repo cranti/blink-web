@@ -1,0 +1,8 @@
+env/
+*.pyc
+logs/
+testing/
+*.m~
+config.py
+schema.sql
+*.DS_Store
