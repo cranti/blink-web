@@ -21,6 +21,7 @@ function refEvents = readInRefEvents(filename)
 % 2.23.2015
 
 try
+	%TODO - what does csvread do when rows have different numbers of columns?
 	M = csvread(filename);
 
 	refEvents = {};
