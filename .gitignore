@@ -5,3 +5,5 @@ testing/
 *.m~
 config.py
 schema.sql
+*.DS_Store
+*.fig
