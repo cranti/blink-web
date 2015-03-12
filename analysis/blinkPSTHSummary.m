@@ -1,8 +1,10 @@
-function blinkPSTHSummary(filename, results)
+function blinkPSTHSummary(dirToSave, prefix, results)
 %BLINKPSTHSUMMARY - Write out csv summary of results from blinkPSTH.m
 %
 % Inputs:
-%	filename 	Name of csv file to write results to (will overwrite content)
+%   dirToSave   Path to directory where csv will be saved.
+%   prefix      Prefix for filename to write results to. Will be appended
+%               with summary.csv. Any existing content will be overwritten. 
 % 	results 	Results struct from blinkPSTH.m
 %
 % See also MAT2CSV
@@ -10,19 +12,36 @@ function blinkPSTHSummary(filename, results)
 % Written by Carolyn Ranti
 % 2.23.2015
 
-fid = fopen(filename,'w');
+% TODO - this needs to be overhauled (b/c of chagnges to results struct)
+% Also, see notes from Sarah: what should I print out?
 
+
+% Change working directory to dirToSave
+origDir = pwd;
+try
+    cd(dirToSave);
+catch ME
+    err = MException('BlinkGUI:fileOut', sprintf('Error changing working directory to %s', dirToSave));
+    err = addCause(err, ME);
+    throw(err);
+end
+
+% Open file
+filename = sprintf('%spsthSummary.csv', prefix);
+fid = fopen(filename, 'w');
 if fid<0
+    cd(origDir);
     ME = MException('BlinkGUI:fileOut',sprintf('Could not create file %s',filename));
     throw(ME);
 end
+
 
 try
 	%print summary title
 	fprintf(fid, '%s,%s\n','Summary:','Peri-Stimulus Time Histogram');
     fprintf(fid, 'Summary printed:,%s\n', datestr(now));
 
-	%print input settings:
+	% print input settings:
     % TODO - think of better labels for some of these?)
 	fprintf(fid, 'Number of subjects,%i\n', results.inputs.numIndividuals);
 	fprintf(fid, 'Number of frames,%i\n', results.inputs.numFrames);
@@ -48,8 +67,13 @@ try
 
 catch ME
     fclose(fid);
+    cd(origDir);
     
     err = MException('BlinkGUI:fileOut', 'Error printing peri-stimulus time histogram summary file.');
     err = addCause(err, ME);
     throw(err);
 end
+
+%% Wrap up
+fclose(fid);
+cd(origDir);

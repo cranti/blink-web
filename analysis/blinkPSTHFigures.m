@@ -17,6 +17,9 @@ function blinkPSTHFigures(dirToSave, results, figFormat, axesH)
 % Carolyn Ranti
 % 2.23.2015
 
+%TODO - this isn't going to work, because of the changes to blinkPSTH
+%output...
+
 narginchk(3,4);
 
 if ~isempty(figFormat)

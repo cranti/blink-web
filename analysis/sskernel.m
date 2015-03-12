@@ -1,4 +1,4 @@
-function [optW, C, W] = sskernel(x,W,str)
+function [optW, C, W] = sskernel(x, W, hWaitBar)
 
 %
 % Function `sskernel' returns optimal bandwidth (standard deviation) 
@@ -32,7 +32,11 @@ function [optW, C, W] = sskernel(x,W,str)
 %       The optimal bandwidth is selected from the elements of W.  
 %       Default value is W = logspace(log10(2*dx),log10((x_max - x_min)),50).
 %       * Do not search bandwidths smaller than a sampling resolution of data.
-% str (optional):	
+% hWaitBar (optional): 
+%       Handle for a waitbar - update user with progress
+%
+% REMOVED:
+% str (optional):
 %       String that specifies the kernel type.
 %       This option is reserved for future extention.
 %       Default str = 'Gauss'.
@@ -47,15 +51,16 @@ function [optW, C, W] = sskernel(x,W,str)
 % Copyright (c) 2009, Hideaki Shimazaki All rights reserved.
 % http://2000.jukuin.keio.ac.jp/shimazaki
 %
-% Slight modifications by Carolyn Ranti (2014)
+% Modified by Carolyn Ranti (3.6.2015)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameters Settings
+
 x = single(reshape(x,1,numel(x)));
 
 str = 'Gauss';
 
-if nargin < 2
+if nargin < 2 || isempty(W)
     x_min = min(x);
     x_max = max(x);
   
@@ -66,9 +71,21 @@ if nargin < 2
     W = logspace(log10(Wmin),log10(Wmax),50);
 end
 
+if nargin<3 || isempty(hWaitBar)
+    waitBarLen = 0;
+else
+    waitBarLen = length(W) + 1;
+end
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Compute a Cost Function
+
+%update progress bar
+if waitBarLen
+    waitbar(1/waitBarLen,hWaitBar);
+end
+
 N_total = length(x);
 
 tau = (triu( ones(N_total,1,'single')*x - x'*ones(1,N_total,'single'), 1)); 
@@ -78,6 +95,19 @@ TAU = (tau(logical(idx)).^2);
 C = zeros(1,length(W),'single');
 
 for k = 1: length(W)
+    
+    if waitBarLen
+        %Check for "cancel" button press
+        %TODO - need to figure out what should be done to pass on...
+        if getappdata(hWaitBar,'canceling')
+            delete(hWaitBar);
+            return
+        end
+        
+        %update progress bar
+        waitbar(k/waitBarLen,hWaitBar);
+    end
+
 	w = single(W(k));
 	C(k) = (N_total/w + 1/w*sum(sum(2*exp(-TAU/4/w/w) - 4*sqrt(2)*exp(-TAU/2/w/w))));
 end
@@ -87,4 +117,4 @@ C = C/2/sqrt(pi);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Optimal Bin Size Selection
 [optC,nC]=min(C); optW = W(nC);
-    
+

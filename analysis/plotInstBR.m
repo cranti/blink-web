@@ -8,20 +8,24 @@ function plotInstBR(rawBlinks, sampleRate, axesH, titleText)
 % Carolyn Ranti
 % 2.24.2015
 
-fractBlinks = raw2fractBlinks(rawBlinks);
-instBR = calcInstBR(fractBlinks, sampleRate);
 
-if nargin==2 || isempty(axesH)
+
+if nargin<3 || isempty(axesH)
     figure()
     axesH = gca;
 end
 hold(axesH,'on');
 
+%Calculate inst BR and plot
+fractBlinks = raw2fractBlinks(rawBlinks);
+instBR = calcInstBR(fractBlinks, sampleRate);
 plot(axesH, instBR, 'k');
-if nargin == 3 || isempty(axesH)
+
+%Label plot
+if nargin < 4 || isempty(titleText)
 	title('Instantaneous Blink Rate');
 else
-	title({'Instantaneous Blink Rate',titleText{:}}); %todo - does this work?
+	title({'Instantaneous Blink Rate',titleText{:}},'Interpreter','none'); 
 end
 xlabel('Sample #')
 ylabel('Blink Rate (blinks/min)')

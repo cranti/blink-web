@@ -1,8 +1,11 @@
-function blinkPermSummary(filename, results)
+function blinkPermSummary(prefix, results)
 %BLINKPERMSUMMARY - Write out csv summary of results from blinkPerm.m
 %
 % Inputs:
-%   filename    Name of csv file to write results to (will overwrite content)
+%   prefix      Prefix for filename to write results to. Will be appended
+%               with summary.csv. Any existing content will be overwritten.
+%               This can include a path, if you don't want it saved in
+%               current directory.
 %   results     Results struct from blinkPerm.m
 %
 % See also MAT2CSV
@@ -12,12 +15,14 @@ function blinkPermSummary(filename, results)
 
 excelColLimit = 16384; %dealing with Excel limitations by printing in columns, if necessary.
 
+% Open file
+filename = sprintf('%sblinkModSummary.csv', prefix);
 fid = fopen(filename,'w');
-
 if fid<0
     ME = MException('BlinkGUI:fileOut',sprintf('Could not create file %s',filename));
     throw(ME);
 end
+
 
 try
 
@@ -49,18 +54,19 @@ try
     %separate sections with a newline
     fprintf(fid,'\n'); 
     
-    %% smoothed blink rate and 5th/95th percentiles are printed in columns
+    %% smoothed blink rate and low/high percentiles are printed in columns
     col_titles = {'Smoothed Blink Rate',...
-                '5th Percentile of Permutations',...
-                '95th Percentile of Permutations'};
+                sprintf('%.2f percentile of permutations', results.lowPrctileLevel),...
+                sprintf('%.2f percentile of permutations', results.highPrctileLevel)};
     table = [results.smoothedBR;
-            results.prctile05;
-            results.prctile95]';
+            results.lowPrctile;
+            results.highPrctile]';
     smoothBR_Percs = mat2csv(table);
 
     fprintf(fid,'\n');
     fprintf(fid,'%s,%s,%s\n', col_titles{:});
     fprintf(fid,'%s\n',smoothBR_Percs);
+
     
 catch ME
     fclose(fid);
@@ -69,3 +75,6 @@ catch ME
     err = addCause(err, ME);
     throw(err);
 end
+
+%% Wrap up
+fclose(fid);

@@ -1,18 +1,24 @@
-function [results] = blinkPerm(numPerms, rawBlinks, sampleRate, W) 
-%BLINKPERM
+function [results] = blinkPerm(numPerms, rawBlinks, sampleRate, varargin) 
+%BLINKPERM Find moments when a group is blinking significantly more or less
 %
-% TODO - document this method
-% TODO - global variable that allows for gui progress update?
 %
 % INPUT:
 %   numPerms    Number of permutations to run for the statistical test
 %   rawBlinks   n x f matrix (n = subjects, f = frames) with binary blink
 %               data (1 = blink, 0 = no blink, NaN = lost data)
 %   sampleRate  Sample rate (in Hz) 
-%   W           Optional - bandwidth (standard deviation) for Gauss density
-%				function used to smooth data. This can be a single value or 
-%				a vector of values that will be tested.
-% 
+%
+% Optional name/value parameters
+%   'W'             Bandwidth (standard deviation) for Gauss density
+%                   function used to smooth data. This can be a single 
+%                   value or a vector of values that will be tested.
+%   'lowPrctile'    Low percentile to test for significant blink inhibition
+%                   (used in permutation testing). Default 2.5
+%   'highPrctile'   High percentile to test for significant blink inhibition
+%                   (used in permutation testing). Default 97.5
+%   'hWaitBar'      Handle to a waitbar to update user with progress
+%                   (default: no progress bar)
+%
 % OUTPUT:
 %   results		Struct with the following fields:
 %       smoothedBR - 1 x f vector with smoothed instantaneous blink rate
@@ -52,24 +58,65 @@ function [results] = blinkPerm(numPerms, rawBlinks, sampleRate, W)
 % data. Moments of significantly increased blinking are the frames in which
 % the smoothed blink rate of the group is greater than the 95th percentile.
 %
-% SEE ALSO: SMOOTHBLINKRATE
+% SEE ALSO: SMOOTHBLINKRATE, SSKERNEL
 
 % Carolyn Ranti
 % 2.27.2015
 
+%% Optional inputs
+
+% Parse optional inputs and check
+assert(mod(length(varargin),2)==0, 'Error - odd number of optional parameters (must be name, value pairs)');
+
+%defaults
+W = [];
+lowPrctileLevel = 2.5; 
+highPrctileLevel = 97.5;
+hWaitBar = [];
+haswaitbar = 0;
+
+for v = 1:2:length(varargin)
+   switch lower(varargin{v})
+       case 'w'
+           W = varargin{v+1};
+           assert(isnumeric(W) || isempty(W), 'W must be empty or a numeric array');
+       case 'lowprctile'
+           lowPrctileLevel = varargin{v+1};
+           if ~isnumeric(lowPrctileLevel) || ~isscalar(lowPrctileLevel) || lowPrctileLevel<0 || lowPrctileLevel>100
+               error('lowPrctile must be a numeric value between 0 and 100');
+           end
+       case 'highprctile'
+           highPrctileLevel = varargin{v+1};
+           if ~isnumeric(highPrctileLevel) || ~isscalar(highPrctileLevel) || highPrctileLevel<0 || highPrctileLevel>100
+               error('highPrctile must be a numeric value between 0 and 100');
+           end
+       case 'hwaitbar'
+           hWaitBar = varargin{v+1};
+           haswaitbar = 1;
+   end
+end
 
 %% Convert binary blink input to fractional blinks
 fractBlinks = raw2fractBlinks(rawBlinks); 
 
 %% Smooth group BR
-% Last input (optional) is a range or value for W (gaussian window to
-% convolve with data)
-if nargin<4
-    [Y,optW] = convWindow(fractBlinks); % gaussian window to convolve with data
-else
-    [Y,optW] = convWindow(fractBlinks,W); % gaussian window to convolve with data
+
+if haswaitbar
+    tstart = tic; 
+    waitbar(0, hWaitBar, 'Smoothing Data...');
 end
+
+% gaussian window to convolve with data
+[Y,optW] = convWindow(fractBlinks, W, hWaitBar); 
+
+%smooth data
 smoothedBR = smoothBlinkRate(fractBlinks, sampleRate, Y);
+
+%have it take at least 1/2 second (for message to be visible in waitbar)
+if haswaitbar
+    while toc(tstart) < .5; end 
+end
+
 
 %% Permutations
 dataLen = length(fractBlinks);
@@ -84,7 +131,20 @@ smoothed_permuted_instBR = zeros(numPerms, dataLen);
 % is the data for one subject, circularly shifted by some random amount
 shiftedData = zeros(numPpl, dataLen, 'single');
 
+waitbar(0, hWaitBar, 'Running Permutation Test...');
 for currPerm = 1:numPerms
+    
+    if haswaitbar
+        %Check for Cancel button press
+        if getappdata(hWaitBar,'canceling')
+            results = struct();
+            delete(hWaitBar);
+            return
+        end
+        
+        %Update progress bar
+        waitbar(currPerm/numPerms, hWaitBar);
+    end
 
     %circularly shift data by a random amount
     shiftSizes = round(2*dataLen*rand(numPpl,1) - dataLen);
@@ -97,20 +157,22 @@ for currPerm = 1:numPerms
 end
 
 %% Calculate 5th and 95th percentile BRs, and find sig. increased/decreased blinking moments
-prctile05 = prctile(smoothed_permuted_instBR, 5);
-prctile95 = prctile(smoothed_permuted_instBR, 95);
+lowPrctile = prctile(smoothed_permuted_instBR, lowPrctileLevel);
+highPrctile = prctile(smoothed_permuted_instBR, highPrctileLevel);
 
 % significant moments of decreased and increased blinking
-decreasedBlinking = find(smoothedBR < prctile05);
-increasedBlinking = find(smoothedBR > prctile95);
-
+decreasedBlinking = find(smoothedBR < lowPrctile);
+increasedBlinking = find(smoothedBR > highPrctile);
+    
 %% Output structure
 %results from analyses
 results.smoothedBR = smoothedBR;
 results.decreasedBlinking = decreasedBlinking;
 results.increasedBlinking = increasedBlinking;
-results.prctile05 = prctile05;
-results.prctile95 = prctile95;
+results.lowPrctileLevel = lowPrctileLevel;
+results.highPrctileLevel = highPrctileLevel;
+results.lowPrctile = lowPrctile;
+results.highPrctile = highPrctile;
 results.optW = optW;
 
 %inputs:
@@ -119,3 +181,4 @@ results.inputs.numIndividuals = numPpl;
 results.inputs.numFrames = dataLen;
 results.inputs.numPerms = numPerms;
 results.inputs.sampleRate = sampleRate;
+

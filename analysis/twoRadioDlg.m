@@ -9,7 +9,6 @@ function [selection, value] = twoRadioDlg(options)
 
 % TODO - fix local var stuff left over from using listdlg as a template
 
-
 radioStrings = options(:,1);
 radioValues = options(:,2);
 
@@ -83,13 +82,13 @@ end
 
 %% OK callback
 function doOK(ok_btn, evd, radioGroup)
-if (~isappdata(0, 'TwoRadioDialogAppData__'))
-    selectionStr = get(get(radioGroup,'SelectedObject'),'String');
-    ad.value = 1;
-    ad.selection = radioValues{strcmpi(selectionStr,radioStrings)};
-    setappdata(0,'TwoRadioDialogAppData__',ad);
-    delete(gcbf);
-end
+    if (~isappdata(0, 'TwoRadioDialogAppData__'))
+        selectionStr = get(get(radioGroup,'SelectedObject'),'String');
+        ad.value = 1;
+        ad.selection = radioValues{strcmpi(selectionStr,radioStrings)};
+        setappdata(0,'TwoRadioDialogAppData__',ad);
+        delete(gcbf);
+    end
 end
 
 %% Cancel callback

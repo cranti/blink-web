@@ -1,162 +1,221 @@
-function results = blinkPSTH(refEvents, targetEvents, lagSize, numPerms, eventSpecs)
+function results = blinkPSTH(refEvents, targetEvents, lagSize, numPerms, varargin)
 %BLINKPSTH - Create a peri-stimulus time histogram using a group's blink
 %data.
 %
-% TODO - document this method
-% Splitting out functions -- will need to change the summary function, and maybe pass in 
-% some parameters about the input specs?
-% TODO - allow user to specify percentile (will need to change labels and things in summary fxn, figures, etc)
+% TODO - document this method, test
 %
 % INPUTS
-%   refEvents       Cell vector, containing vectors of reference data.
-%                   There can be a single set of reference data (i.e. 1x1 cell)
-%                   or one set of reference data for each individual in
-%                   targetEvents.
-%   targetEvents    Cell vector, containing vectors of target data.
-%   lagSize         Vector with two numbers indicating the size of the lag examined 
-%                   on either side of a reference event. The first number indicates
-%                   the number of samples examined prior to an event, and the 2nd 
-%                   number indicates the number of samples examined after an event. 
-%                   The size of the PSTH is sum(lagSize)+1
-%   numPerms        Number of permutations
-%   eventSpecs      Optional struct with information about how the target and 
-%                   reference data were calculated
+%   refEvents       Cell vector, containing row vectors of reference data.
+%                   There can be a single set of reference data (i.e. 1x1
+%                   cell) or a set of reference data corresponding to each
+%                   individual in targetEvents.
+%   targetEvents    Cell vector, containing row vectors of target data.
+%                   Each individual should have their own entry.
+%   lagSize         Vector with two numbers indicating the size of the lag
+%                   examined on either side of a reference event. The first
+%                   number indicates the number of samples examined prior
+%                   to an event, and the 2nd number indicates the number of
+%                   samples examined after an event. The size of the PSTH
+%                   is sum(lagSize)+1
+%   numPerms        Number of permutations. If this is empty or <=0, 
+%                   permutation testing is not done.
+%
+% Optional parameters (pass in as name/value pair):
+%   'startFrame'    First frame to start including target and reference
+%                   events (e.g. if you want to avoid an artifact from the 
+%                   beginning of a movie). Default is 1.
+%   'inclThresh'    Threshold for including target data in the PSTH. This
+%                   value (0 - 1) indicates the percent of valid data (i.e.
+%                   not NaN) around a particular event needed to include
+%                   that segment in the analysis. Default is 0.2
+%   'lowPrctile'    Low percentile to test for significantly lower blinking
+%                   (used in permutation testing). Default is 2.5
+%   'highPrctile'   High percentile to test for significantly higher blinking
+%                   (used in permutation testing). Default is 97.5
 %
 %
-% OUTPUT 
-%   Struct with the following fields: (TODO finish this)
-%       psth - Peri-stimulus time histogram
-%       nRefsNoEvents - Number of reference sets that had no events.
+% OUTPUT
+%   Struct with the following fields: 
+%       psth - Overall peri-stimulus time histogram. Average of PSTHs
+%           calculated for each subject.
+%       indivPSTH - Matrix with the PSTH calculated for each person. Each
+%           individual is in a separate row.
+%       indivTotalRefEventN - Number of total reference events for each
+%           individual. If there is only one reference set, this value is 
+%           the same for everyone.
+%       indivUsedRefEventN - Number of reference sets included in analyses
+%           for each individual. This value may differ between individuals
+%           even if there is only a single reference set, based on the
+%           include threshold setting and the amount of lost data (NaNs)
+%           for each individual.
+%       nRefSetsNoEvents - Number of reference sets that had no events
+%           contributing to the PSTH.
 %       nTargetPadding - Number of events in which it was necessary to pad 
-%           the target data on either side of the event. TODO
-%       RefEvents - 
-%       prctile05 - 1 x f vector with the 95th percentile blink rate found
-%           by permutation testing.
-%       prctile95 - 1 x f vector with the 5th percentile blink rate found
-%           by permutation testing.
-% 
-%       inputs - struct with information about the input variables:
-%           numIndividuals - number of individuals in targetEvents
-%           dataLen - length of data
+%           the target data on either side of the event. This is a vector
+%           with 3 values: number of events that needed padding on the
+%           left, number of events that needed padding on the right, and
+%           number of events that needed padding on both sides. Padding
+%           occurs if (event index - left lag size) < 0 or (event index + 
+%           right lag size) > target data size
+%       
+%       permTest - struct with results from permutation testing *
 %           numPerms - number of permutations
-%           refEventType - reference event type
-%           refCode - reference code
-%           targetEventType - target event type
-%           targetCode - target code
-%           startFrame - start frame
-% 
-% SEE ALSO: BLINKPSTHSUMMARY, BLINKPSTHFIGURES
+%           lowPrctileLevel - Percentile level used to test for
+%               significantly decreased blinking.
+%           highPrctileLevel - Percentile level used to test for
+%               significantly increased blinking.
+%           lowPrctile - 1 x f vector with the high percentile blink rate
+%               from the permutation test
+%           highPrctile - 1 x f vector with the low percentile blink rate
+%               from the permutation test
+%           mean - 1 x f vector with the mean blink rate from the
+%               permutation test
+%       * If permutation testing is not run, this is an empty struct.
+%       
+%       inputSpecs - struct with details about the inputs provided
+%           numTargets - number of entries in targetEvents
+%           numRefSets - number of entries in refEvents
+%           targetLens - length of each entry in targetEvents
+%           refLens - length of each entry in refEvents
+%           inclThresh - threshold for including a segment of target data
+%           startFrame - frame to start including reference and target
+%               events
+%
+% SEE ALSO: GETREFEVENTS, GETTARGETEVENTS, BLINKPSTHSUMMARY, BLINKPSTHFIGURES
 
 % Written by Carolyn Ranti
-% 2.27.2015
+% 3.3.2015
 % Adapted from code written by Jenn Moriuchi, Grace Ann Marrinan, and Sarah Shultz
 
+% TODO - add to GUI/summary writing file
+%         refEventType - reference event type
+%         refCode - reference code
+%         targetEventType - target event type
+%         targetCode - target code
+
+% TODO - write a data quality check script for GUI
+
+warning('THIS CODE HAS NOT BEEN THOROUGHLY CHECKED YET');
 
 %% Set up
-[numPpl, dataLen] = size(targetEvents);
+
+assert(iscell(targetEvents), 'Error in blinkPSTH: targetEvents must be a cell');
+assert(iscell(refEvents), 'Error in blinkPSTH: refEvents must be a cell');
+
+numTargets = length(targetEvents);
 numRefSets = length(refEvents);
+allDataLens = cellfun(@length, targetEvents);
 
-if numRefSets > 1 && numRefSets ~= numPpl
-    error('If more than one reference set is provided, there must be exactly one per individual.')
+if numRefSets > 1 && numRefSets ~= numTargets
+    error('Error in blinkPSTH: If more than one reference set is provided, there must be exactly one per individual.')
 end
 
-%TODO - each reference set must match only the corresponding target data
-%(they can all be different lengths from each other) - fix this error check
-% TODO - also, change the input format for the target data to match
-% reference events (cell with vectors)
-% TODO - readInTargetData
-refLen = unique(cellfun(@length, refEvents));
-if length(refLen)>1 || refLen ~= dataLen
-    error('Target data and reference events must be the same length.')
-end
+%Check that reference frames are <= length of each corresponding target data set
+maxRefValue = cellfun(@max, refEvents);
+assert(prod(allDataLens >= maxRefValue) == 1, 'Error in blinkPSTH: all reference event indices must be <= length of the target data');
 
-assert(length(lagSize)==2), 'LagSize must be a vector with 2 numbers.');
+%Check that all vectors in targetEvents are ROW VECTORS. 
+assert(prod(cellfun(@isrow, targetEvents)) == 1, 'Error in blinkPSTH: entries in targetEvents must be row vectors');
+
+%Check that lagSize has 2 values
+assert(length(lagSize)==2 && isnumeric(lagSize), 'Error in blinkPSTH: LagSize must be a vector with 2 numbers.');
 windowSize = sum(lagSize) + 1;
 
+%Figure out whether to run permutation test
+runPermTest = (nargin>=4) && (~isempty(numPerms)) && (numPerms >= 0);
+
+
+%% Parse optional inputs and check
+assert(mod(length(varargin),2)==0, 'Error in blinkPSTH: Odd number of optional parameters (must be name, value pairs)');
 
 %defaults
 startFrame = 1;
-refEventType = 'allFrames';
-
-% Parse optional inputs and check
-assert(mod(length(varargin),2)==0, 'Error - odd number of optional parameters (must be name, value pairs)');
-
+inclThresh = .2; 
+lowPrctileLevel = 2.5; 
+highPrctileLevel = 97.5;
 
 for v = 1:2:length(varargin)
    switch lower(varargin{v})
-       case 'refeventtype'
-           refEventType = varargin{v+1};
-           assert(sum(strcmpi(refEventType,{'allFrames','firstFrameOnly'}))==1,'refEventType must be either allFrames or firstFrameOnly');
-       case 'targeteventtype'
-           targetEventType = varargin{v+1};
-           assert(sum(strcmpi(targetEventType,{'allFrames','firstFrameOnly'}))==1,'targetEventType must be either allFrames or firstFrameOnly');
        case 'startframe'
            startFrame = varargin{v+1};
-           assert(startFrame>0 && startFrame<=dataLen,'startFrame must be positive and less than the length of the data.');
+           if ~isnumeric(startFrame) || ~isscalar(startFrame) || startFrame<0
+              error('startFrame must be a positive numeric value');
+           end
+       case 'inclthresh'
+           inclThresh = varargin{v+1};
+           if ~isnumeric(inclThresh) || ~isscalar(inclThresh) || inclThresh<0 || inclThresh>1
+               error('inclThresh must be a numeric value between 0 and 1');
+           end
+       case 'lowprctile'
+           lowPrctileLevel = varargin{v+1};
+           if ~isnumeric(lowPrctileLevel) || ~isscalar(lowPrctileLevel) || lowPrctileLevel<0 || lowPrctileLevel>100
+               error('lowPrctile must be a numeric value between 0 and 100');
+           end
+       case 'highprctile'
+           highPrctileLevel = varargin{v+1};
+           if ~isnumeric(highPrctileLevel) || ~isscalar(highPrctileLevel) || highPrctileLevel<0 || highPrctileLevel>100
+               error('highPrctile must be a numeric value between 0 and 100');
+           end
        otherwise
-            error('BlinkGUI:input','Unrecognized parameter name %s',varargin{v})  
+           warning('Unknown parameter - skipping (%s)', varargin{v});
    end
 end
 
 
 %% Calculate cross-correlogram
-results = makePSTH(refEvents, targetEvents, lagSize);
 
-% Add reference events to the results struct
-results.RefEvents = RefEvents;
+results = makePSTH(refEvents, targetEvents, lagSize, startFrame, inclThresh);
 
 %% Permutation testing
-permResults = zeros(numPerms, windowSize);
-permutedData = targetEvents; %initialize permutedData as targetEvents -- it's overwritten in each loop
-for p = 1:numPerms
-    %TODO - circshift data. shift each subject independently, right?
-    shiftSizes = round(2*dataLen*rand(numPpl,1) - dataLen);
-    for ii = 1:numPpl
-        permutedData(ii,:) = circshift(targetEvents(ii,:),[0, shiftSizes(ii)]);
+
+if runPermTest
+    permResults = zeros(numPerms, windowSize);
+    permutedData = targetEvents; %initialize as targetEvents (but it's overwritten in each loop)
+
+    for p = 1:numPerms
+        % circshift data: shift each subject independently 
+        shiftSizes = round(allDataLens*rand(numTargets,1));
+        for ii = 1:numTargets
+            permutedData{ii} = circshift(targetEvents{ii}, shiftSizes(ii), 2); %TODO - check this/make sure that 
+        end
+        temp = makePSTH(refEvents, permutedData, lagSize, startFrame, inclThresh);
+        permResults(p,:) = temp.psth;
     end
-    temp = makePSTH(refEvents, permutedData, lagSize);
-    permResults(p,:) = temp.crossCorr;
+
+    % Add low and high percentile values to results
+    results.permTest.numPerms = numPerms;
+    results.permTest.lowPrctileLevel = lowPrctileLevel;
+    results.permTest.highPrctileLevel = highPrctileLevel;
+    results.permTest.lowPrctile = prctile(permResults, lowPrctileLevel);
+    results.permTest.highPrctile = prctile(permResults, highPrctileLevel);
+    results.permTest.mean = mean(permResults); %TODO - consider whether to make this median 
+else
+    results.permTest = struct();
 end
 
-% Add 5th and 95th percentiles to results
-results.prctile05 = prctile(permResults,5);
-results.prctile95 = prctile(permResults,95);
-
-%% Add inputs to results struct
-results.inputs = struct();
-if nargin<5
-    eventSpecs = struct();
-end
-
-results.inputs.numIndividuals = numPpl;
-results.inputs.numFrames = dataLen;
-results.inputs.numPerms = numPerms;
-
-%TODO - for each field, if eventSpecs has it, put in inputs
-%TODO - definitely should do some error checking...
-results.inputs.refEventType = eventSpecs.refEventType;
-results.inputs.refCode = eventSpecs.refCode;
-results.inputs.targetEventType = eventSpecs.targetEventType;
-results.inputs.targetCode = eventSpecs.targetCode;
-results.inputs.startFrame = eventSpecs.startFrame;
-
+%% Add input specs
+results.inputSpecs.numTargets = numTargets;
+results.inputSpecs.numRefSets = numRefSets;
+results.inputSpecs.targetLens = cellfun(@length, targetEvents);
+results.inputSpecs.refLens = cellfun(@length, refEvents);
+results.inputSpecs.inclThresh = inclThresh;
+results.inputSpecs.startFrame = startFrame;
 
 end
 
 
 %% Make a peri-stimulus time histogram
-% TODO - check and document me
-function results = makePSTH(refEvents, targetEvents, lagSize)
+function results = makePSTH(refEvents, targetEvents, lagSize, startFrame, inclThresh)
     
     numRefSets = length(refEvents);
-    numIndivs = size(targetEvents,1);
+    numIndivs = length(targetEvents);
     windowSize = sum(lagSize) + 1;
 
     % Set counters at 0
-    nRefsNoEvents = 0; %number of reference sets with no events
-    nTargetPadding = zeros(1,3); %leftFill,rightFill, both
+    nRefSetsNoEvents = 0; %number of reference sets with no events
+    nTargetPadding = zeros(1,3); %leftFill, rightFill, both
 
-    AllCrossCorr = zeros(numIndivs, windowSize);
+    indivPSTH = zeros(numIndivs, windowSize);
 
     if numRefSets == 1
         refFrames = refEvents{1};  
@@ -165,6 +224,10 @@ function results = makePSTH(refEvents, targetEvents, lagSize)
         end
     end
 
+    %preallocate storage vars
+    indivTotalRefEvents = nan(numIndivs,1); %number of reference events for each 
+    indivUsedRefEvents = nan(numIndivs,1);
+    
     % Loop through target group participants
     for targ = 1:numIndivs 
 
@@ -175,14 +238,17 @@ function results = makePSTH(refEvents, targetEvents, lagSize)
             % If no reference frames, skip ahead 
             % (this condition has already been checked if there's only one ref. set)
             if isempty(refFrames)
-                nRefsNoEvents = nRefsNoEvents + 1;
-                AllCrossCorr(targ,:) = NaN(1, windowSize);
+                nRefSetsNoEvents = nRefSetsNoEvents + 1;
+                indivPSTH(targ,:) = NaN(1, windowSize);
                 continue
             end
         end
 
         % get target data
-        thisTarget = targetEvents(targ,:);
+        thisTarget = targetEvents{targ};
+        
+        % length of this person's data
+        dataLen = length(thisTarget);
 
         % Loop through reference frames in the reference set
         tempCrossCorrCounters = zeros(1, windowSize);
@@ -206,40 +272,52 @@ function results = makePSTH(refEvents, targetEvents, lagSize)
             target = [leftFill, target, rightFill];
             
             %Advance padding counters
-            if ~isempty(leftFill) %just left
-                nTargetPadding(1,1) = nTargetPadding(1,1) + 1;
-                if ~isempty(rightFill) %both
-                    nTargetPadding(1,2) = nTargetPadding(1,2) + 1;
-                    nTargetPadding(1,3) = nTargetPadding(1,3) + 1;
-                end
+            if ~isempty(leftFill) && ~isempty(rightFill) %both
+                nTargetPadding(3) = nTargetPadding(3) + 1;
+            elseif ~isempty(leftFill) %just left
+                nTargetPadding(1) = nTargetPadding(1) + 1;
             elseif ~isempty(rightFill) %just right
-                nTargetPadding(1,2) = nTargetPadding(1,1) + 1;
+                nTargetPadding(2) = nTargetPadding(2) + 1;
             end
             
-            % Add cross-corr hits (if there is <20% lost data during target events)
-            if sum(isnan(target)) < (.2*length(target))
+            % Add hits (as long as there's enough included data)
+            if sum(~isnan(target)) > inclThresh*dataLen
                 refFrameCount = refFrameCount + 1;
-                target(find(isnan(target))) = 0;
+                target(isnan(target)) = 0;
                 tempCrossCorrCounters = tempCrossCorrCounters + target;
             end
         end
         
-        % Store cross-corr count for this subject-to-subject comparison, averaged across number of reference events
+        % Average across number of reference events and store this
+        % individual's PSTH
         if refFrameCount > 0
-            AllCrossCorr(targ,:) = tempCrossCorrCounters / refFrameCount;
+            indivPSTH(targ,:) = tempCrossCorrCounters ./ refFrameCount;
         else 
-            
-            AllCrossCorr(targ,:) = NaN(1, windowSize);
+            indivPSTH(targ,:) = NaN(1, windowSize);
         end
+        
+        %store the number of reference events (per person) and the number
+        %of reference events used (i.e. the number with a sufficient amount
+        %of included data)
+        indivTotalRefEvents(targ) = length(refFrames);
+        indivUsedRefEvents(targ) = refFrameCount;
+        
     end %end of target loop
 
-    % Average cross-corr counters across all target group participants. 
-    % This is our group average cross-correlation.
-    crossCorr = nanmean(AllCrossCorr,1);
+    % If none of the reference sets had events
+    if nRefSetsNoEvents== numRefSets
+        error('No reference events.');
+    end
+    
+    % Average PSTH across all target group participants. 
+    overallPSTH = nanmean(indivPSTH,1);
 
     %% results struct
     results = struct();
-    results.psth = crossCorr;
-    results.nRefsNoEvents = nRefsNoEvents;
+    results.psth = overallPSTH;
+    results.indivPSTH = indivPSTH;
+    results.indivTotalRefEventN = indivTotalRefEvents;
+    results.indivUsedRefEventN = indivUsedRefEvents;
+    results.nRefSetsNoEvents = nRefSetsNoEvents;
     results.nTargetPadding = nTargetPadding;
 end
