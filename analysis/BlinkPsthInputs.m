@@ -13,9 +13,16 @@ classdef BlinkPsthInputs < handle
         % target/ref event information:
         targetCode = [];
         targetEventType = '';
+        targetFilename = '';
+        
         refCode = [];
         refEventType = '';
+        refSetLen = []; %length of original reference sets (used for error checking)
+        refFilename = '';
         
+        %title text for plotting
+        targetTitle = ''; 
+        refTitle = '';
     end
     
     methods

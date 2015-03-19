@@ -21,13 +21,11 @@ function [refEvents, refSetLen] = getRefEvents(eventData, eventCode, eventType, 
 %                   the indices of the reference events.
 %   refSetLen       Length of each original reference set.
 %
-% See also: BLINKPSTH
+% See also: READINPSTHEVENTS, BLINKPSTH
 
 % Written by Carolyn Ranti
 % 3.11.15
 
-
-warning('THIS CODE HAS NOT BEEN THOROUGHLY CHECKED YET');
 
 numRefSets = length(eventData);
 refSetLen = cellfun(@length, eventData);

@@ -1,79 +1,113 @@
-function blinkPSTHSummary(dirToSave, prefix, results)
+function blinkPSTHSummary(prefix, results, otherInputSpecs)
 %BLINKPSTHSUMMARY - Write out csv summary of results from blinkPSTH.m
 %
 % Inputs:
-%   dirToSave   Path to directory where csv will be saved.
-%   prefix      Prefix for filename to write results to. Will be appended
-%               with summary.csv. Any existing content will be overwritten. 
-% 	results 	Results struct from blinkPSTH.m
+%   prefix          Prefix for filename to write results to. Will be appended
+%                   with summary.csv. Any existing content will be overwritten.
+%                   Can include name of directory where file should be saved.
+% 	results         Results struct from blinkPSTH.m
+%   extraInputSpecs Struct with information about the way that target and
+%                   reference data were identified. Fields that will be
+%                   printed (if they exist) are: refEventType, refCode,
+%                   refSetLen, targetEventType, and targetCode.
 %
 % See also MAT2CSV
 
 % Written by Carolyn Ranti
-% 2.23.2015
+% 3.19.2015
 
-% TODO - this needs to be overhauled (b/c of chagnges to results struct)
-% Also, see notes from Sarah: what should I print out?
+%%
 
-
-% Change working directory to dirToSave
-origDir = pwd;
-try
-    cd(dirToSave);
-catch ME
-    err = MException('BlinkGUI:fileOut', sprintf('Error changing working directory to %s', dirToSave));
-    err = addCause(err, ME);
-    throw(err);
+if nargin<3 || ~isstruct(otherInputSpecs)
+    otherInputSpecs = struct();
 end
 
-% Open file
-filename = sprintf('%spsthSummary.csv', prefix);
+%% Open file
+filename = sprintf('%sPSTHsummary.csv', prefix);
 fid = fopen(filename, 'w');
 if fid<0
-    cd(origDir);
-    ME = MException('BlinkGUI:fileOut',sprintf('Could not create file %s',filename));
+    ME = MException('BlinkGUI:fileOut',sprintf('Error printing PSTH summary - could not create file %s',filename));
     throw(ME);
 end
 
-
 try
-	%print summary title
-	fprintf(fid, '%s,%s\n','Summary:','Peri-Stimulus Time Histogram');
-    fprintf(fid, 'Summary printed:,%s\n', datestr(now));
+	%% summary heading
+	fprintf(fid, 'Peri-Stimulus Time Histogram,%s\n', datestr(now));
+    
+    %% GENERAL SETTINGS
+    fprintf(fid, '\n** SETTINGS **\n');
+    fprintf(fid, 'Window size before event:,%i\n', results.inputSpecs.lagSize(1));
+    fprintf(fid, 'Window size after event:,%i\n', results.inputSpecs.lagSize(2));
+    fprintf(fid, 'Start Frame:,%i\n', results.inputSpecs.startFrame);
+    fprintf(fid, 'Include threshold:,%.2f\n',results.inputSpecs.inclThresh);
+    fprintf(fid, '# permutations,%i\n', results.permTest.numPerms);
 
-	% print input settings:
-    % TODO - think of better labels for some of these?)
-	fprintf(fid, 'Number of subjects,%i\n', results.inputs.numIndividuals);
-	fprintf(fid, 'Number of frames,%i\n', results.inputs.numFrames);
-	fprintf(fid, 'Reference Event Type,%s\n', results.inputs.refEventType);
-	fprintf(fid, 'Reference Event Code,%i\n', results.inputs.refCode);
-	fprintf(fid, 'Target Event Type,%s\n', results.inputs.targetEventType);
-	fprintf(fid, 'Target Event Code,%i\n', results.inputs.targetCode);
-	fprintf(fid, 'Start Frame,%i\n', results.inputs.startFrame);
-	fprintf(fid, 'Number of permutations,%i\n', results.inputs.numPerms);
 
-	% print cross-correlogram
-	fprintf(fid, '\nPSTH summary\n');
-	fprintf(fid, 'Number of reference sets with no events:,%i\n', results.nRefsNoEvents);
-	fprintf(fid, 'Number of events with padding\n');
-	fprintf(fid, ',Before the event:,%s\n', results.nTargetPadding(1));
-	fprintf(fid, ',After the event:,%s\n', results.nTargetPadding(2));
-	fprintf(fid, ',Before and after:,%s\n', results.nTargetPadding(3));
-	fprintf(fid, 'PSTH:,%s\n', mat2csv(results.crossCorr));
+	%% Reference event data
+    fprintf(fid,'\n** REFERENCE SETS **\n');
+    fprintf(fid, 'Input file:,%s\n', otherInputSpecs.refFilename);
 
-	% print significance
-	fprintf(fid, '5th percentile of permutations:,%s\n', mat2csv(results.prctile05));
-	fprintf(fid, '95th percentile of permutations:,%s\n', mat2csv(results.prctile95));
+    if isfield(otherInputSpecs, 'refEventType')
+        fprintf(fid, 'Event Type:,%s\n', otherInputSpecs.refEventType);
+    end
+    if isfield(otherInputSpecs, 'refCode')
+        fprintf(fid, 'Event Code:,%i\n', otherInputSpecs.refCode);
+    end
+    fprintf(fid, '# reference sets:,%i\n', results.inputSpecs.numRefSets);
+    if isfield(otherInputSpecs, 'refSetLen')
+        fprintf(fid, '# samples per reference set:,%s\n', mat2csv(otherInputSpecs.refSetLen, 1));
+    end
+
+    %% Target event data
+    fprintf(fid,'\n** TARGETS **\n');
+    fprintf(fid, 'Input file:,%s\n', otherInputSpecs.targetFilename); 
+
+    if isfield(otherInputSpecs, 'targetEventType')
+        fprintf(fid, 'Event Type:,%s\n', otherInputSpecs.targetEventType);
+    end
+    if isfield(otherInputSpecs, 'targetCode')
+        fprintf(fid, 'Event Code:,%i\n', otherInputSpecs.targetCode);
+    end
+    fprintf(fid, '# target participants:,%i\n', results.inputSpecs.numTargets);
+    fprintf(fid, '# samples per target participant:,%s\n', mat2csv(results.inputSpecs.targetLens, 1));
+   
+    
+    %% PSTH
+	fprintf(fid, '\n** PSTH RESULTS **\n');
+	
+    offsetToPrint = (-results.inputSpecs.lagSize(1)):(results.inputSpecs.lagSize(2));
+    fprintf(fid, 'Offset from event:,%s\n', mat2csv(offsetToPrint));
+    fprintf(fid, 'PSTH (avg # blinks):,%s\n', mat2csv(results.psth, 1));
+
+	% significance
+    fprintf(fid, '%.2f percentile of permutations:,%s\n', results.permTest.lowPrctileLevel, mat2csv(results.permTest.lowPrctile, 1));
+	fprintf(fid, '%.2f percentile of permutations:,%s\n', results.permTest.highPrctileLevel, mat2csv(results.permTest.highPrctile, 1));
+    fprintf(fid, 'Mean of permutations:,%s\n', mat2csv(results.permTest.mean, 1));
+    
+    
+    %% individual PSTH
+    fprintf(fid, '\n** INDIVIDUAL RESULTS **\n');
+    
+    % Table of values  
+    fprintf(fid, 'Total reference events per target participant:,%s\n', mat2csv(results.indivUsedRefEventN, 1));
+    fprintf(fid, 'Included reference events per target participant:,%s\n', mat2csv(results.indivTotalRefEventN, 1));
+	fprintf(fid, '# events w/ padding before event:,%s\n', mat2csv(results.nTargetPadding(:,1), 1));
+	fprintf(fid, '# events w/ padding after event:,%s\n', mat2csv(results.nTargetPadding(:,2), 1));
+	fprintf(fid, '# events w/ padding before & after:,%s\n', mat2csv(results.nTargetPadding(:,3), 1));
+    
+    fprintf(fid, '\nIndividual PSTH (avg # blinks. 1 row per target participant)\n');
+    fprintf(fid, 'Offset from event:,%s\n', mat2csv(offsetToPrint));
+    for ii = 1:size(results.indivPSTH, 1)
+        fprintf(fid,',%s\n',mat2csv(results.indivPSTH(ii,:), 1));
+    end
 
 catch ME
     fclose(fid);
-    cd(origDir);
     
-    err = MException('BlinkGUI:fileOut', 'Error printing peri-stimulus time histogram summary file.');
+    err = MException('BlinkGUI:fileOut', 'Error printing PSTH summary file.');
     err = addCause(err, ME);
     throw(err);
 end
 
 %% Wrap up
 fclose(fid);
-cd(origDir);

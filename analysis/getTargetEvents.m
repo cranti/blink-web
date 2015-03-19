@@ -28,11 +28,11 @@ function targetEvents = getTargetEvents(eventData, eventCode, eventType)
 %                   and NaNs (indicating lost or unusable data, preserved
 %                   from the original input)
 %
+% See also: READINPSTHEVENTS, BLINKPSTH
 
 % Written by Carolyn Ranti
 % 3.11.15
 
-warning('THIS CODE HAS NOT BEEN THOROUGHLY CHECKED YET');
 numIndivs = length(eventData);
 
 % if there is no target code, keep data the same (continuous measure)

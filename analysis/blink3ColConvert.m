@@ -1,4 +1,4 @@
-function [blinkMat,subjOrder] = blink3ColConvert(blinks, sampleLen)
+function [blinkMat,subjOrder] = blink3ColConvert(blinks, sampleLen, outCell)
 %BLINK3COLCONVERT - Convert 3 column input into a matrix of binary blink
 %	data, with one person's data per row.
 %
@@ -6,10 +6,13 @@ function [blinkMat,subjOrder] = blink3ColConvert(blinks, sampleLen)
 % 	blinks 		3 column matrix. See below for details.
 %	sampleLen 	length of the clip sampled. Determines number of columns
 % 				in the output matrix.
+%   outCell     Optional. If true, output a cell with one entry per
+%               subject. Default False.
 %
 % OUTPUT
 % 	blinks 		n x f matrix (n = subjects, f = frames) with binary blink
-%       		data (1 = blink, 0 = no blink, NaN = lost data)
+%       		data (1 = blink, 0 = no blink, NaN = lost data). If outCell
+%       		is true, 
 % 	subjOrder 	order of subjects, matching the rows of blinkMat. Order is
 %       		preserved from input.
 %
@@ -41,17 +44,44 @@ function [blinkMat,subjOrder] = blink3ColConvert(blinks, sampleLen)
 % 	blinkMat will still have 12 columns.
 
 % Carolyn Ranti
-% 12.3.2014 
+% 3.17.2015 - added cell option
+
+%% Inputs/checks
+
+%default
+if nargin<3
+    outCell = 0;
+end
 
 assert(size(blinks,2)==3,'Input error: Blink data must have 3 columns.');
 
+%%
 subjOrder = unique(blinks(:,1),'stable'); %preserve the order of subjects
 
-blinkMat = zeros(length(subjOrder), sampleLen);
+if ~outCell
+    blinkMat = zeros(length(subjOrder), sampleLen);
+else
+    % if only one sampleLen is passed in, expand so that the same value
+    % applies to all subjects
+    if isscalar(sampleLen)
+       sampleLen = sampleLen*ones(1, length(subjOrder)); 
+    end
+    
+    % preallocate: vector of zeros in each cell entry
+    blinkMat = cell(1, length(subjOrder));
+    for ii = 1:length(subjOrder)
+        blinkMat{ii} = zeros(1, sampleLen(ii));
+    end
+end
 
 for ii = 1:size(blinks,1)
     start = blinks(ii,2);
     stop = blinks(ii,3);
     subjRow = (subjOrder == blinks(ii,1));
-    blinkMat(subjRow,start:stop) = 1;
+    
+    if ~outCell
+        blinkMat(subjRow,start:stop) = 1;
+    else
+        blinkMat{subjRow}(start:stop) = 1;
+    end
 end

@@ -17,7 +17,7 @@ function [results] = blinkPerm(numPerms, rawBlinks, sampleRate, varargin)
 %   'highPrctile'   High percentile to test for significant blink inhibition
 %                   (used in permutation testing). Default 97.5
 %   'hWaitBar'      Handle to a waitbar to update user with progress
-%                   (default: no progress bar)
+%
 %
 % OUTPUT:
 %   results		Struct with the following fields:
@@ -92,9 +92,13 @@ for v = 1:2:length(varargin)
            end
        case 'hwaitbar'
            hWaitBar = varargin{v+1};
-           haswaitbar = 1;
+           %make sure it's a valid handle
+           if ishandle(hWaitBar)
+               haswaitbar = 1;
+           end
    end
 end
+
 
 %% Convert binary blink input to fractional blinks
 fractBlinks = raw2fractBlinks(rawBlinks); 
@@ -115,8 +119,8 @@ smoothedBR = smoothBlinkRate(fractBlinks, sampleRate, Y);
 %have it take at least 1/2 second (for message to be visible in waitbar)
 if haswaitbar
     while toc(tstart) < .5; end 
+    waitbar(1, hWaitBar);
 end
-
 
 %% Permutations
 dataLen = length(fractBlinks);
@@ -131,19 +135,21 @@ smoothed_permuted_instBR = zeros(numPerms, dataLen);
 % is the data for one subject, circularly shifted by some random amount
 shiftedData = zeros(numPpl, dataLen, 'single');
 
-waitbar(0, hWaitBar, 'Running Permutation Test...');
+if haswaitbar
+    waitbar(0, hWaitBar, 'Running Permutation Test...');
+end
+
 for currPerm = 1:numPerms
     
     if haswaitbar
         %Check for Cancel button press
         if getappdata(hWaitBar,'canceling')
             results = struct();
-            delete(hWaitBar);
             return
         end
         
         %Update progress bar
-        waitbar(currPerm/numPerms, hWaitBar);
+        waitbar(double(currPerm)/double(numPerms), hWaitBar);
     end
 
     %circularly shift data by a random amount
@@ -156,7 +162,13 @@ for currPerm = 1:numPerms
     smoothed_permuted_instBR(currPerm,:) = smoothBlinkRate(shiftedData, sampleRate, Y);
 end
 
-%% Calculate 5th and 95th percentile BRs, and find sig. increased/decreased blinking moments
+if haswaitbar
+    tstart = tic;
+    waitbar(0, hWaitBar,'Calculating Significance...');
+end
+
+
+%% Calculate low and high percentile BRs, and find sig. increased/decreased blinking moments
 lowPrctile = prctile(smoothed_permuted_instBR, lowPrctileLevel);
 highPrctile = prctile(smoothed_permuted_instBR, highPrctileLevel);
 
@@ -182,3 +194,8 @@ results.inputs.numFrames = dataLen;
 results.inputs.numPerms = numPerms;
 results.inputs.sampleRate = sampleRate;
 
+
+if haswaitbar
+    while toc(tstart) < .5; end 
+    waitbar(1, hWaitBar);
+end

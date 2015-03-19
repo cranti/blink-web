@@ -9,6 +9,7 @@ classdef BlinkPermInputs < handle
         rawBlinks = [];
         sampleRate = [];
         plotTitle = {};
+        filename = '';
    end
    
    methods

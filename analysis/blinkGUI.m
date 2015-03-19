@@ -1,9 +1,5 @@
-function blinkGUI()
-
-% Add inputs:
-%   include threshold (psth advanced)
-%   actaully get figure format from pop up
-
+function hMain = blinkGUI()
+DEV = 1;
 % > have multiple analysis types available in one GUI, and change input
 %       fields according to the analysis type (uitoggletool?)
 % > output useful error messages from all subfunctions
@@ -15,11 +11,9 @@ function blinkGUI()
 % > logging: how to set a location for log file?
 % > specs file? 
 % > what to do upon closing the figure? (fclose all, etc)
-% > figure out resizing
-% > change all "frame" to "sample #" ?
+% > change all "frame" to "sample #"
 
-% position dialog boxes in the middle of the GUI
-% position the figures next to the GUI?
+% position the figures next to the GUI
 
 % something is going wrong with the plotting of blink permutation results
 
@@ -34,44 +28,32 @@ function blinkGUI()
 % > Make it so that can't switch between analyses while it's running!!
 
 %GUIDATA
-% > pass in handles to every callback? may be better than getting guidata for
-% each
-% > make guidata a class? - what happens if a field doesn't exist??
 % Use GUIDATA consistently within each function: break vars out into local variables, but don't
 % bother to break out handles (because they aren't changing...)
 
+% TODO - add subject order to PSTH, now that 3 column format is an option?
 
-%% Initialize GUIDATA - TODO switch over from using persistent variables
+% write a data quality script - check things before running analyses?
 
-GUIDATA = BlinkGuiData; %class containing a bunch of settings (defaults set in class files)
+%FUNCTIONALITY TO ADD
+%   > clear data that is loaded (particularly in psth, where you need multiple files...) 
+%   > sort PSTH data by density/by original order
+%   > only plot a few subjects if there's more than one ref set
+%   > scroll through the plots of raw blink data
+%   > scroll through the plots of PSTH data
 
-% GUIDATA = struct();
-% 
-% %Settings
-% GUIDATA.guiSettings.maxPerms = 10000;
-% GUIDATA.guiSettings.error_log = '/Users/etl/Desktop/GitCode/blink-web/analysis/testing/blinkGUI_log.txt';
-% 
-% % From output panel
-% GUIDATA.output.dir = '';
-% GUIDATA.output.saveCsv = 1;
-% GUIDATA.output.saveMat = 1;
-% GUIDATA.output.saveFigs = 1;
-% GUIDATA.output.figFormat = '';
-% 
-% % for blinkPerm
-% GUIDATA.blinkPermInputs.rawBlinks = [];
-% GUIDATA.blinkPermInputs.sampleRate = [];
-% GUIDATA.blinkPermInputs.plotTitle = {};
-% 
-% % for blinkPSTH
-% GUIDATA.blinkPsthInputs.targetEvents = {};
-% GUIDATA.blinkPsthInputs.refEvents = {};
-% GUIDATA.blinkPsthInputs.startFrame = 1;
-% % target/ref event information:
-% GUIDATA.blinkPsthInputs.targetCode = [];
-% GUIDATA.blinkPsthInputs.targetEventType = '';
-% GUIDATA.blinkPsthInputs.refCode = [];
-% GUIDATA.blinkPsthInputs.refEventType = '';
+% add filename to blinkPermSummary
+
+% add DRAWNOW functionality
+
+% add 'TooltipString' properties for each item?
+% add 'UIContextMenu'?
+
+% Maybe I should just reset the data when I toggle between analyses...
+
+%% Initialize GUIDATA
+%this is a class containing a bunch of default settings 
+GUIDATA = BlinkGuiData;
 
 %% GUI
 
@@ -92,18 +74,28 @@ hMain = figure(...
     'position',[100 100 W H],...
     'MenuBar', 'none',...
     'Toolbar','none',...
-    'HandleVisibility','callback',...
+    'HandleVisibility','callback',... 
     'numbertitle','off',...
     'name', 'Blink Analyses',...
     'resize', 'off',...
     'Color',bkgdColor,...
-    'CloseRequestFcn',@CloseGUI,...
+    'CloseRequestFcn',{@cbCloseGUI GUIDATA},...
     'Visible', 'off');
 
-set(hMain,...
+%
+if DEV
+    guidata(hMain, GUIDATA);
+    set(hMain, 'HandleVisibility', 'on');
+end
+
+
+
+%TODO - is this okay for executable?? 
+set(get(hMain,'Parent'),...
     'DefaultUicontrolFontName', 'Helvetica',... DefaultUicontrolFontName?
     'DefaultUicontrolFontSize', 15,...
     'DefaultUicontrolFontUnits', 'pixels',...
+    'DefaultUicontrolFontWeight', 'normal',...
     'DefaultUicontrolHorizontalAlignment', 'left');
 
 %Can I set defaults for input/warning/error dialogs?
@@ -117,18 +109,20 @@ uicontrol(hMain, 'Tag', 'hPermToggle',...
     'String', 'Blink Modulation',...
     'FontSize', 18,...
     'Position', [0 H-35, W/2, 35],...
-    'Callback', {@AnalysisToggle 'perm'});
+    'Callback', {@cbAnalysisToggle GUIDATA 'perm'});
 
 uicontrol(hMain, 'Tag', 'hPsthToggle', ...
     'Style', 'toggle', ...
     'String', 'Peri-stimulus time histogram',...
     'FontSize', 18,...
     'Position', [W/2 H-35 W/2 35],...
-    'Callback', {@AnalysisToggle 'psth'});
+    'Callback', {@cbAnalysisToggle GUIDATA 'psth'});
 
 % Axes to plot selected data
 axes('Parent',hMain, 'Tag', 'hPlotAxes',...
     'Units', 'pixels', ...
+    'FontName', 'Helvetica',...
+    'FontSize', 12,...
     'HandleVisibility','callback', ...
     'Position',[50 (H-280) (W-100) 200]);
 
@@ -138,8 +132,7 @@ uicontrol(hMain,...
     'Style', 'pushbutton',...
     'String', 'pop',...
     'Position', [W-50 630 40 40],...
-    'Callback', @PopOutGuiPlot);
-
+    'Callback', {@cbPopOutGuiPlot GUIDATA});
 
 %% BLINK PERM INPUTS
 
@@ -154,7 +147,7 @@ hPermInputPanel = uipanel('Parent', hMain, 'Tag', 'hPermInputPanel',...
 %LOAD BLINK CSV LABEL
 uicontrol(hPermInputPanel,...
     'Style', 'text',...
-    'String','Load data (.csv file)',...
+    'String','Load Data (.csv file)',...
     'FontWeight', 'bold',...
     'HorizontalAlignment', 'left',...
     'Units','pixels',...
@@ -167,7 +160,7 @@ uicontrol(hPermInputPanel, 'Tag', 'hLoadBlinkFile',...
     'String','Raw Blinks',...
     'Units','pixels',...
     'Position',[160 145 95 30],...
-    'Callback',@LoadBlinks); 
+    'Callback', {@cbLoadBlinks GUIDATA}); 
 
 % NUMBER OF PERMUTATIONS
 % Label
@@ -186,6 +179,17 @@ uicontrol(hPermInputPanel, 'Tag', 'hNumPerms',...
     'BackgroundColor','white',...
     'Units','pixels',...
     'Position',[200 72 70 25]);
+
+% RESET INPUTS button
+uicontrol(hPermInputPanel, 'Tag', 'hPermReset',...
+    'Style','pushbutton',...
+    'String','Reset Inputs',...
+    'ForegroundColor', 'white',...
+    'FontWeight','bold',...
+    'Units','pixels',...
+    'BackgroundColor',[250 80 80]./256,...
+    'Position',[5 5 100 25],...
+    'Callback', {@resetPerm GUIDATA}); 
 
 
 %% PERMS ADVANCED OPTIONS PANEL
@@ -229,7 +233,7 @@ uicontrol(hPermsAdvPanel, 'Tag', 'hWRange',...
 %SIGNIFICANCE THRESHOLDS
 uicontrol(hPermsAdvPanel,...
     'Style', 'text',...
-    'String','Significance thresholds (0 - 100)',...
+    'String','Significance Thresholds (0 - 100)',...
     'FontWeight', 'bold',...
     'HorizontalAlignment', 'left',...
     'Units','pixels',...
@@ -287,7 +291,7 @@ hPsthInputPanel = uipanel('Parent',hMain, 'Tag', 'hPsthInputPanel',...
 %LOAD DATA LABEL
 uicontrol(hPsthInputPanel,...
     'Style', 'text',...
-    'String','Load data (.csv files)',...
+    'String','Load Data (.csv files)',...
     'FontWeight', 'bold',...
     'HorizontalAlignment', 'left',...
     'Units','pixels',...
@@ -302,7 +306,7 @@ uicontrol(hPsthInputPanel, 'Tag', 'hLoadTargetEvents',...
     'String','Target Events',...
     'Units','pixels',...
     'Position',[14 150 120 30],...
-    'Callback',@LoadTargetData); 
+    'Callback', {@cbLoadTargetData GUIDATA}); 
 
 %LOAD REFERENCE EVENTS
 % Button that brings up menu to select a file, + related dialog boxes
@@ -311,7 +315,7 @@ uicontrol(hPsthInputPanel, 'Tag', 'hLoadRefEvents',...
     'String','Reference Events',...
     'Units','pixels',...
     'Position',[139 150 130 30],...
-    'Callback',@LoadRefData); 
+    'Callback', {@cbLoadRefData GUIDATA}); 
          
 %LAG SIZE
 uicontrol(hPsthInputPanel,...
@@ -320,7 +324,7 @@ uicontrol(hPsthInputPanel,...
     'FontWeight', 'bold',...
     'HorizontalAlignment', 'left',...
     'Units','pixels',...
-    'Position',[10 100 250 20],...
+    'Position',[10 115 250 20],...
     'BackgroundColor', inputPanelColor);
     
 %Label - Before
@@ -329,7 +333,7 @@ uicontrol(hPsthInputPanel,...
     'String','Before event ',...
     'HorizontalAlignment', 'right',...
     'Units','pixels',...
-    'Position',[14 65 95 25],...
+    'Position',[14 80 95 25],...
     'BackgroundColor', inputPanelColor);
 
 %Label - After
@@ -338,7 +342,7 @@ uicontrol(hPsthInputPanel,...
     'String','After event ',...
     'HorizontalAlignment', 'right',...
     'Units','pixels',...
-    'Position',[140 65 95 25],...
+    'Position',[140 80 95 25],...
     'BackgroundColor',inputPanelColor);
 
 %Edit window size before event
@@ -347,7 +351,7 @@ uicontrol(hPsthInputPanel,  'Tag', 'hLagBefore',...
     'String','',...
     'HorizontalAlignment', 'center',...
     'Units','pixels',...
-    'Position',[115 67 30 25],...
+    'Position',[115 82 30 25],...
     'BackgroundColor','white');
 
 %Edit window size after event
@@ -356,7 +360,7 @@ uicontrol(hPsthInputPanel, 'Tag', 'hLagAfter',...
     'String','',...
     'HorizontalAlignment', 'center',...
     'Units','pixels',...
-    'Position',[241 67 30 25],...
+    'Position',[241 82 30 25],...
     'BackgroundColor','white');
 
 
@@ -365,7 +369,7 @@ uicontrol(hPsthInputPanel, 'Tag', 'hLagAfter',...
 uicontrol(hPsthInputPanel,...
     'Style','text',...
     'Units','pixels',... 
-    'Position',[10 15 190 25],...
+    'Position',[10 40 190 25],...
     'FontWeight','bold',...
     'String','Number of Permutations:',...
     'BackgroundColor',inputPanelColor);
@@ -376,8 +380,19 @@ uicontrol(hPsthInputPanel, 'Tag', 'hNumPermsPsth',...
     'HorizontalAlignment', 'center',...
     'BackgroundColor','white',...
     'Units','pixels',...
-    'Position',[200 17 70 25]);
+    'Position',[200 42 70 25]);
 
+
+% RESET INPUTS button
+uicontrol(hPsthInputPanel, 'Tag', 'hPsthReset',...
+    'Style','pushbutton',...
+    'String','Reset Inputs',...
+    'ForegroundColor', 'white',...
+    'FontWeight','bold',...
+    'Units','pixels',...
+    'BackgroundColor',[250 80 80]./256,...
+    'Position',[5 5 100 25],...
+    'Callback', {@resetPsth GUIDATA}); 
          
 %% PSTH ADVANCED OPTIONS PANEL
 hPsthAdvPanel = uipanel('Parent',hPsthInputPanel, 'Tag', 'hPsthAdvPanel',...
@@ -390,7 +405,7 @@ hPsthAdvPanel = uipanel('Parent',hPsthInputPanel, 'Tag', 'hPsthAdvPanel',...
 %PSTH settings
 uicontrol(hPsthAdvPanel,...
     'Style', 'text',...
-    'String','PSTH settings',...
+    'String','PSTH Settings',...
     'FontWeight', 'bold',...
     'HorizontalAlignment', 'left',...
     'Units','pixels',...
@@ -400,20 +415,20 @@ uicontrol(hPsthAdvPanel,...
 %label for start frame
 uicontrol(hPsthAdvPanel,...
     'Style', 'text',...
-    'String','Start frame',...
+    'String','Reference start frame',...
     'HorizontalAlignment', 'left',...
     'Units','pixels',...
-    'Position',[30 120 100 25],...
+    'Position',[30 120 150 25],...
     'BackgroundColor', inputPanelColor);
 
 %Edit start frame
 uicontrol(hPsthAdvPanel, 'Tag', 'hStartFrameEdit',...
     'Style', 'edit',...
-    'String','',...
+    'String','1',...
     'HorizontalAlignment', 'center',...
     'BackgroundColor','white',...
     'Units','pixels',...
-    'Position',[115 122 45 25]);
+    'Position',[185 122 45 25]);
 
 %label for include threshold
 uicontrol(hPsthAdvPanel,...
@@ -427,17 +442,17 @@ uicontrol(hPsthAdvPanel,...
 %Edit include threshold
 uicontrol(hPsthAdvPanel, 'Tag', 'hInclThreshEdit',...
     'Style', 'edit',...
-    'String','',...
+    'String','0.2',...
     'HorizontalAlignment', 'center',...
     'BackgroundColor','white',...
     'Units','pixels',...
-    'Position',[150 87 45 25]);
+    'Position',[185 87 45 25]);
 
 
 %SIGNIFICANCE THRESHOLDS
 uicontrol(hPsthAdvPanel,...
     'Style', 'text',...
-    'String','Significance thresholds (0 - 100)',...
+    'String','Significance Thresholds (0 - 100)',...
     'FontWeight', 'bold',...
     'HorizontalAlignment', 'left',...
     'Units','pixels',...
@@ -481,7 +496,7 @@ uicontrol(hPsthAdvPanel, 'Tag', 'hSigHighPsth',...
     'BackgroundColor','white');
 
 
-%% OUTPUT PANEL
+%% OUTPUT PANEL (both analyses)
 hOutputPanel = uipanel('Parent',hMain,...
      'Title','Outputs',...
      'FontSize', 15,...
@@ -507,7 +522,7 @@ uicontrol(hOutputPanel,...
     'Value', 1,...
     'Units', 'pixels',...
     'Position', [120 85 120 30],...
-    'Callback',@CheckSaveCsv);
+    'Callback', {@cbCheckSaveCsv GUIDATA});
 
 %check box - save figures
 uicontrol(hOutputPanel,...
@@ -517,13 +532,13 @@ uicontrol(hOutputPanel,...
     'Value', 1,...
     'Units', 'pixels',...
     'Position', [260 85 80 30],...
-    'Callback',@CheckSaveFigs);
+    'Callback', {@cbCheckSaveFigs GUIDATA});
 
 hFigFormat = uicontrol(hOutputPanel, 'Tag', 'hFigFormat',...
     'Style', 'popup',...
-    'String', 'jpg|pdf|eps|fig|png|tif|bmp',...
+    'String', 'jpg|pdf|eps|fig|png|tif',...
     'Position', [335 82 80 30],...
-    'Callback', @ChooseFigFormat);
+    'Callback', {@cbChooseFigFormat GUIDATA});
 
 %check box - save mat file
 uicontrol(hOutputPanel,...
@@ -533,7 +548,7 @@ uicontrol(hOutputPanel,...
     'Value', 1,...
     'Units', 'pixels',...
     'Position', [430 85 100 30],...
-    'Callback', @CheckSaveMat);
+    'Callback', {@cbCheckSaveMat GUIDATA});
 
          
 %TYPE NAME OF OUTPUT FILE - TODO change to file prefix in code
@@ -561,7 +576,7 @@ uicontrol(hOutputPanel, 'Tag', 'hChooseOutputDir',...
     'String','Choose output directory',...
     'Units','pixels',...
     'Position',[10 10 180 30],...
-    'Callback', @ChooseOutputDir);
+    'Callback', {@cbChooseOutputDir GUIDATA});
 
 % Label where output directory is displayed
 uicontrol(hOutputPanel, 'Tag', 'hListOutputFile',...
@@ -584,918 +599,70 @@ hGoButton = uicontrol(hMain, 'Tag', 'hGoButton',...
     'Position',[(W/2-60) 15 120 30],...
     'FontSize',16);
 
-%% Create handles structure and save it to GUIDATA
+%% Final steps to initialize
 
-GUIDATA.setHandles(hMain); % creates handles structure + placeholder for a progress bar
-% GUIDATA.handles = guihandles(hMain);
-% GUIDATA.handles.hWaitBar = []; %add a placeholder for progress bar
-guidata(hMain, GUIDATA);
+% Create handles structure in GUIDATA
+GUIDATA.setHandles(hMain);
 
-%% Initialize: 
+% Set default analysis ('perm' or 'psth')
+cbAnalysisToggle([],[], GUIDATA, 'psth');
 
-%SET DEFAULT ANALYSIS - 'perm' or 'psth'
-AnalysisToggle(hGoButton,[],'perm');
-%SET DEFAULT FIG FORMAT
-ChooseFigFormat(hFigFormat);
+% Set default figure format
+cbChooseFigFormat(hFigFormat, [], GUIDATA);
 
-%Make GUI visible
+% Make GUI visible
+drawnow
 set(hMain,'Visible', 'on');
 
-%% Utility functions
+%% Callback functions (only called from GUI)
 
-%join a directory and a filename -- TODO look at how other systems
-%define pathnames. May want this in a separate file, actually
-function fullpath = dirFileJoin(dirname, filename)
-    if strcmp(dirname(end),'/')
-        fullpath = [dirname,filename];
-    else
-        fullpath = [dirname,'/',filename];
-    end
-end
-
-%create an error dialogue window, and log the error if there is a log file 
-function gui_error(hObj,ME)
-    
-    gd = guidata(hObj);
-    error_log = gd.guiSettings.error_log;
-    
-    w = errordlg(ME.message, 'Error', 'modal');
-    
-    fid = fopen(error_log,'a');
-    if fid<=0
-        warndlg('Error log file not found!')
-    else
-        fprintf(fid,'%s\t',datestr(now));
-        fprintf(fid,'%s\n',ME.message);
-        
-        %PRINT THE STACK
-        if ~isempty(ME.cause) %if there is a cause, print that stack
-            stack = ME.cause{1}.stack;
-            fprintf(fid,'Cause:\t%s\n',ME.cause{1}.message);
-        else %otherwise, the stack from the exception
-            stack = ME.stack;
-        end
-     
-        for i = 1:length(stack)
-            fprintf(fid, '\tLine %i\t%s\t%s\n', stack(i).line, stack(i).name, stack(i).file);
-        end
-        
-        fprintf(fid,'\n');
-        fclose(fid);
-    end
-    
-    %wait for the user to close the error
-    uiwait(w);
-end
-
-function toggleBigButtons(handles, setting)
-   switch lower(setting)
-       case 'disable'
-           set(handles.hGoButton, 'Enable', 'inactive');
-           set(handles.hPermToggle, 'Enable', 'inactive');
-           set(handles.hPsthToggle, 'Enable', 'inactive');
-       case 'enable'
-           set(handles.hGoButton, 'Enable', 'on');
-           set(handles.hPermToggle, 'Enable', 'on');
-           set(handles.hPsthToggle, 'Enable', 'on');
-   end
-end
-
-
-%% Callback functions: BOTH ANALYSES
-
-%for the toggle buttons
-function AnalysisToggle(hObj, ~, name)
-    gd = guidata(hObj);
-    
-    %color settings
-    toggleOnColor = 'black'; %[175 0 0] ./256;
-    toggleOffColor = [120 120 120] ./256;
-    
-    
-    % Permutation testing ON
-    if strcmpi(name, 'perm')
-        
-        %set perm toggle on, psth toggle off
-        set(gd.handles.hPermToggle, 'Value', 1,...
-            'FontWeight', 'bold',...
-            'ForegroundColor', toggleOnColor);
-        set(gd.handles.hPsthToggle, 'Value', 0, ...
-            'FontWeight', 'normal',...
-            'ForegroundColor', toggleOffColor);
-        
-        %Toggle the panels
-        set(gd.handles.hPermInputPanel, 'Visible', 'on');
-        set(gd.handles.hPsthInputPanel, 'Visible', 'off');
-        
-        %set button callback
-        set(gd.handles.hGoButton, 'Callback', @RunBlinkPerm);
-        
-        %Plot data if it exists 
-        cla(gd.handles.hPlotAxes, 'reset');
-        if ~isempty(gd.blinkPermInputs.rawBlinks) && ~isempty(gd.blinkPermInputs.sampleRate)
-           plotInstBR(gd.blinkPermInputs.rawBlinks, gd.blinkPermInputs.sampleRate, gd.handles.hPlotAxes, gd.blinkPermInputs.plotTitle);
-        end
-        
-    % PSTH ON
-    elseif strcmpi(name, 'psth')
-        %set perm toggle on, psth toggle off
-        set(gd.handles.hPsthToggle, 'Value', 1,...
-            'FontWeight', 'bold',...
-            'ForegroundColor', toggleOnColor);
-        set(gd.handles.hPermToggle, 'Value', 0, ...
-            'FontWeight', 'normal',...
-            'ForegroundColor', toggleOffColor);
-        
-        %Toggle the panels
-        set(gd.handles.hPsthInputPanel, 'Visible', 'on');
-        set(gd.handles.hPermInputPanel, 'Visible', 'off');
-        
-        %set button callback
-        set(gd.handles.hGoButton, 'Callback', @RunBlinkPSTH);
-        
-        %Plot data if it exists 
-        cla(gd.handles.hPlotAxes, 'reset');
-        if ~isempty(gd.blinkPsthInputs.targetEvents) || ~isempty(gd.blinkPsthInputs.refEvents)
-           %TODO plot the data 
-        end
-        
-    end
-
-end
-
-%pop out whatever is plotted in the GUI 
-%TODO - need to make this resizable somehow
-function PopOutGuiPlot(hObj, varargin)
-    gd = guidata(hObj);
-    %TODO - fix positioning
+% Pop out whatever is plotted in the embedded axis
+function cbPopOutGuiPlot(~, ~, gd)
     h = figure('Position', [50 50 800 400]);
     a = copyobj(gd.handles.hPlotAxes, h);
-    set(a, 'Position', [50 50 710 300]);
+    set(a, 'units','normalized',...
+        'OuterPosition', [0 0 1 1]); % resizes!
+        
 end
 
-%choose output directory
-function ChooseOutputDir(hObj, varargin)
-    gd = guidata(hObj);
+% TODO: create a reset button
+function resetPerm(~, ~, gd)
+    gd.resetPerm();
     
-    outputDir = uigetdir('','Choose a folder where results will be saved');
-    if outputDir ~= 0
-        set(gd.handles.hListOutputFile,'String',outputDir,...
-            'FontAngle','normal');
-        
-        ex = get(gd.handles.hListOutputFile, 'Extent');
-        pos = get(gd.handles.hListOutputFile, 'Position');
-        
-        if ex(3) > pos(3)
-            set(gd.handles.hListOutputFile, 'String', ['...', outputDir((end-40):end)]);
-        end
-        
-        %save new output dir to guidata
-        gd.output.dir = outputDir;
-        guidata(hObj, gd);
-    end
-    
-end
-
-%check box: save csv file
-function CheckSaveCsv(hObj,varargin)
-    
-    gd = guidata(hObj);
-    gd.output.saveCsv = get(hObj,'Value');
-    
-    if gd.output.saveCsv || gd.output.saveFigs || gd.output.saveMat
-        set(gd.handles.hOutputFile, 'Enable', 'on');
-        set(gd.handles.hChooseOutputDir, 'Enable', 'on');
-    else
-        set(gd.handles.hOutputFile, 'Enable', 'off');
-        set(gd.handles.hChooseOutputDir, 'Enable', 'off');
-    end
-    
-    guidata(hObj, gd);
-end
-
-%check box: save figures
-function CheckSaveFigs(hObj,varargin)
-    
-    gd = guidata(hObj);
-    gd.output.saveFigs = get(hObj,'Value');
-    
-    if gd.output.saveFigs
-       set(gd.handles.hFigFormat, 'Enable', 'on');
-    else
-       set(gd.handles.hFigFormat, 'Enable', 'off');
-    end
-    
-    if gd.output.saveCsv || gd.output.saveFigs || gd.output.saveMat
-        set(gd.handles.hOutputFile, 'Enable', 'on');
-        set(gd.handles.hChooseOutputDir, 'Enable', 'on');
-    else
-        set(gd.handles.hOutputFile, 'Enable', 'off');
-        set(gd.handles.hChooseOutputDir, 'Enable', 'off');
-    end
-    
-    guidata(hObj, gd);
-end
-
-%check box: save mat file
-function CheckSaveMat(hObj,varargin)
-    
-    gd = guidata(hObj);
-    gd.output.saveMat = get(hObj,'Value');
-    
-    if gd.output.saveCsv || gd.output.saveFigs || gd.output.saveMat
-        set(gd.handles.hOutputFile, 'Enable', 'on');
-        set(gd.handles.hChooseOutputDir, 'Enable', 'on');
-    else
-        set(gd.handles.hOutputFile, 'Enable', 'off');
-        set(gd.handles.hChooseOutputDir, 'Enable', 'off');
-    end
-    
-    guidata(hObj, gd);
-end
-
-function ChooseFigFormat(hObj, varargin)
-    %'jpg|pdf|eps|fig|png|tif|bmp'
-    
-    switch get(hObj, 'Value')
-        case 1
-            figf = 'jpg';
-        case 2 
-            figf = 'pdf';
-        case 3
-            figf = 'eps';
-        case 4
-            figf = 'fig';
-        case 5
-            figf = 'png';
-        case 6
-            figf = 'tif';
-        case 7
-            figf = 'bmp';
-        otherwise
-            figf = [];
-    end
-    
-    %save fig format in guidata
-    gd = guidata(hObj);
-    gd.output.figFormat = figf;
-    guidata(hObj, gd);
-end
-
-
-%% BLINK PERM
-function LoadBlinks(hObj, varargin)
-    gd = guidata(hObj);
-    
-    
-    %choose file dialog box: 
-    [input_file, PathName] = uigetfile('*.csv','Choose a csv file with blink data');
-    if input_file == 0
-        return
-    end
-    input_file_full = dirFileJoin(PathName, input_file);
-
-    %Dialog box: get file type before loading file
-    options = {'Binary blink matrix','BinaryMat';
-                'Three column format','3col'};
-    [formatType, value] = twoRadioDlg(options);
-    
-    %if user cancels
-    if value==0
-        return
-    end
-    
-    %Get data length if format is 3col
-    if strcmpi(formatType,'3col')
-        prompt = {'Enter data length:'};
-        dlg_title = '3 Column Format';
-        num_lines = 1;
-        answer = inputdlg(prompt,dlg_title, num_lines);
-        
-        %if user cancels or doesn't enter anything
-        if isempty(answer)
-            return
-        end
-
-        sampleLen = str2double(answer{1});
-        if isnan(sampleLen) || sampleLen<=0 
-            errordlg('Data length must be a positive number.');
-            return
-        end
-        
-    elseif strcmpi(formatType,'BinaryMat')
-        sampleLen = NaN;
-    end
-    
-    %Get sample rate
-    prompt = {'Enter sample rate (frames/sec):'};
-    dlg_title = 'Sample Rate';
-    num_lines = 1;
-    answer = inputdlg(prompt,dlg_title, num_lines);
-    
-    %if user cancels or doesn't enter anything
-    if isempty(answer)
-        return
-    end
-
-    sampleRate = str2double(answer{1});
-    if isnan(sampleRate) || sampleRate<=0
-        errordlg('Sample rate must be a positive number.');
-        return
-    end
-
-    % Read in file
-    try
-        rawBlinks = readInBlinks(input_file_full, formatType, sampleLen);
-    catch ME
-        gui_error(hObj,ME);
-        return
-    end
-    
-    %Plot instantaneous blink rate - sample rate and input file name are in the title
-    try
-        cla(gd.handles.hPlotAxes,'reset');
-        plotTitle = {input_file, sprintf('Sample rate: %.2f',sampleRate)};
-        plotInstBR(rawBlinks, sampleRate, gd.handles.hPlotAxes, plotTitle);
-    catch ME
-        err = MException('BlinkGUI:plotting','Error plotting instantaneous blink rate.');
-        err = addCause(err, ME);
-        gui_error(hObj,err);
-    end
-    
-    %save everything to the guidata object:
-    gd.blinkPermInputs.sampleRate = sampleRate;
-    gd.blinkPermInputs.rawBlinks = rawBlinks;
-    gd.blinkPermInputs.plotTitle = plotTitle;
-    guidata(hObj, gd);
-end
-
-function RunBlinkPerm(hObj, varargin)
-
-    gd = guidata(hObj);  
-    
-    % Raw blink data
-    rawBlinks = gd.blinkPermInputs.rawBlinks;
-    
-    % Number of permutations
-    numPerms = get(gd.handles.hNumPerms, 'String');
-    
-    % Significance thresh.s
-    sigHigh = str2double(get(gd.handles.hSigHighPerm,'String'));
-    sigLow = str2double(get(gd.handles.hSigLowPerm,'String'));
-    
-    % W range to try in sskernel
-    Wrange = get(gd.handles.hWRange, 'String');
-    
-    % What to save
-    saveMat = gd.output.saveMat;
-    saveCsv = gd.output.saveCsv;
-    saveFigs = gd.output.saveFigs;
-    
-    % Output things
-    outputDir = gd.output.dir;
-    outputPrefix = get(gd.handles.hOutputFile,'String'); %TODO - there is currently no error checking here - remove /\. ?
-    figFormat = gd.output.figFormat;
-    
-    %% Check basic inputs
-    error_msgs = {};
-    
-    % RAW BLINK DATA
-    % (if it's empty, so is sample rate -- TODO verify this)
-    if isempty(rawBlinks)
-        error_msgs{end+1} = '\tNo data was loaded.';
-    end
-    
-    % NUMBER OF PERMUTATIONS
-    if isempty(numPerms)
-        error_msgs{end+1} = '\tNumber of permutations was not specified.';
-    elseif isnan(str2double(numPerms))
-        error_msgs{end+1} = '\tNumber of permutations must be a number';
-    elseif numPerms > gd.guiSettings.maxPerms
-        error_msgs{end+1} = sprintf('\tMaximum number of permutations= %i',gd.guiSettings.maxPerms);
-    else
-        numPerms = int16(str2double(numPerms));
-        set(gd.handles.hNumPerms, 'String', numPerms);
-    end
-
-    % SIGNIFICANCE THRESHOLDS
-    % High significance level must be higher than low
-    if sigHigh <= sigLow
-        error_msgs{end+1} = '\tLow significance threshold must be less than high significance threshold.';
-    elseif sigHigh == sigLow
-        w = warndlg('Low and high significance thresholds are equal', 'Warning', 'modal');
-        uiwait(w);
-    end
-        
-    % WHAT TO SAVE
-    %if user wants to save anything, they must specify an output directory
-    if saveMat || saveCsv || saveFigs
-        if isempty(outputDir) || isequal(outputDir, 0)
-            error_msgs{end+1} = '\tOutput directory was not selected.';
-        elseif ~isdir(outputDir)
-            error_msgs{end+1} = '\tOutput directory is invalid.';
-        end
-    end
-        
-    % REPORT ERRORS: if any of the conditions were not met, create error 
-    % dialogue with messages and return
-    if ~isempty(error_msgs)
-        dlg_msg = strjoin(error_msgs,'\n');
-        e = errordlg(sprintf(dlg_msg), 'Input Error', 'modal');
-        uiwait(e);
-        return
-    end
-        
-    %% Check advanced settings and revert to default if any are invalid
-    
-    % SIGNIFICANCE THRESHOLDS
-    % If significance thresholds are invalid, revert to  defaults
-    if isnan(sigLow) || sigLow>=100 || sigLow<=0
-       w = warndlg('Invalid low significance threshold: using default (2.5)', 'Invalid Entry', 'modal');
-       uiwait(w);
-       set(gd.handles.hSigLowPerm,'String','2.5');
-       sigLow = 2.5;
-    end
-    
-    if isnan(sigHigh) || sigHigh>=100 || sigHigh<=0
-       w = warndlg('Invalid high significance threshold: using default (97.5)', 'Invalid Entry', 'modal');
-       uiwait(w);
-       set(gd.handles.hSigHighPerm,'String','97.5');
-       sigHigh = 97.5;
-    end
-    
-    % W RANGE
-    %TODO - definitely need to check this
-    if ~isempty(Wrange)
-        wWarning = 0; %boolean -- true if something goes wrong
-        Ws = strsplit(Wrange, ':');
-        Wvalues = [];
-        for i = 1:length(Ws)
-            [temp, status] = str2num(Ws{i});
-            if status==0 %not a number
-                wWarning = 1;
-                break
-            else
-                Wvalues(i) = temp;
-            end 
-            if i>3 %too many values
-                wWarning = 1;
-                break
-            end
-        end
-        
-        % If something went wrong, throw warning and revert to default
-        if wWarning
-            w = warndlg('Invalid W range: must be a numeric value or range of values (e.g. 1:10 or 1:2:10). Using default (none).', 'Invalid Entry', 'modal');
-            uiwait(w);
-            
-            set(gd.handles.hWRange, 'String', '');
-            Wrange = [];
-            
-        % Otherwise, set up W range
-        elseif length(Wvalues)==1
-            Wrange = Wvalues;
-        elseif length(Wvalues)==2
-            Wrange = Wvalues(1):Wvalues(2);
-        elseif length(Wvalues)==3
-            Wrange = Wvalues(1):Wvalues(2):Wvalues(3);
-        end
-    end
-    
-    %% Create a waitbar to update user with progress
-    hWaitBar = waitbar(0, '1', ...
-        'Name','Blink Modulation',...
-        'CreateCancelBtn', 'setappdata(gcbf,''canceling'',1)');
-    setappdata(hWaitBar, 'canceling', 0)
-    
-    gd.setWaitBar(hWaitBar);
-    guidata(hObj, gd);
-    
-    % Disable buttons to run analyses or toggle between them
-    toggleBigButtons(gd.handles, 'disable'); 
-    %% run the analysis
-    
-    try
-        results = blinkPerm(numPerms, rawBlinks, gd.blinkPermInputs.sampleRate,...
-                                'lowPrctile', sigLow,...
-                                'highPrctile', sigHigh,...
-                                'W', Wrange,...
-                                'hWaitBar', hWaitBar);
-    catch ME %TODO - check that PSTH code is consistent with this
-        delete(hWaitBar);
-        gd.setWaitBar([]);
-        gui_error(hObj,ME);
-        toggleBigButtons(gd.handles, 'enable');
-        return
-    end
-
-    
-    %% create figures
-    
-    thingsSaved = 0;
-    thingsToSave = saveFigs + saveCsv + saveMat;
-    
-    if thingsToSave > 0
-        waitbar(0, hWaitBar, 'Saving output...');
-        dirFilePrefix = dirFileJoin(outputDir, outputPrefix);
-    else
-        dirFilePrefix = '';
-    end
-    
-    if ~saveFigs
-        figFormat = ''; %if figFormat is empty, figures will not be saved
-    end
-    
-    try
-        blinkPermFigures(dirFilePrefix, results, figFormat);
-    catch ME
-        gui_error(hObj,ME);
-    end
-
-    if saveFigs
-        thingsSaved = thingsSaved + 1;
-        waitbar(thingsSaved/thingsToSave, hWaitBar);
-    end
-    
-    %% summary file
-    if saveCsv
-       
-        % output csv summary file
-        try
-            blinkPermSummary(dirFilePrefix, results);
-        catch ME
-            gui_error(hObj,ME);
-        end
-        
-        thingsSaved = thingsSaved + 1;
-        waitbar(thingsSaved/thingsToSave, hWaitBar);
-    end
-    
-    %% save mat file
-    if saveMat
-        
-        % save .mat file in the outputDir
-        try
-            % full path for a mat file:
-            mat_file_full = sprintf('%sblinkPerm.mat', dirFilePrefix);
-            save(mat_file_full, 'results'); %TODO - does this work, to only save part of a struct?
-        catch ME
-            gui_error(hObj,ME);
-        end
-        
-        thingsSaved = thingsSaved + 1;
-        waitbar(thingsSaved/thingsToSave, hWaitBar);
-    end
-    
-    %% Delete progress bar, enable big buttons
-    toggleBigButtons(gd.handles, 'enable');
-    delete(hWaitBar);
-    gd.setWaitBar([]);
-    
-    %% Save guidata -- TODO is this necessary?? probably not, now that i'm using handle class...
-    guidata(hObj, gd);
-    
-end
-
-%% BLINK PSTH
-function LoadTargetData(hObj, varargin)
-    
-    gd = guidata(hObj);
-    
-    [input_file, PathName] = uigetfile('*.csv','Choose a csv file with target data');
-    if input_file == 0
-        return
-    end
-    input_file_full = dirFileJoin(PathName, input_file);
-
-    %Get target code
-    prompt = {'Enter target event code:'};
-    dlg_title = 'Target Event Code';
-    num_lines = 1;
-    answer = inputdlg(prompt, dlg_title, num_lines);
-    
-    %if user cancels or doesn't enter anything
-    if iscell(answer) && isempty(answer) 
-        return
-    end
-    
-    % If target code is empty or non-numeric
-    targetCode = str2double(answer{1});
-    if isnan(targetCode) 
-        errordlg('Target code must be numeric.');
-        return
-    end
-
-    %TODO get targetEventType with radio dlg box
-    targetEventType = 'allFrames';
-
-    try 
-        rawTargetData = readInPsthEvents(input_file_full); 
-        gd.blinkPsthInputs.targetEvents = getTargetEvents(rawTargetData, targetCode, targetEventType); 
-    catch ME
-        gui_error(hObj,ME);
-        return
-    end
-    
-    %TODO - edit blinkPsth with stuff for PSTH summary file
-    gd.blinkPsthInputs.targetCode = targetCode;
-    gd.blinkPsthInputs.targetEventType = targetEventType;
-
-    %plot both target data AND reference data
+    % clear plot
     cla(gd.handles.hPlotAxes, 'reset');
-    plotTargetAndRef(gd.blinkPsthInputs.targetEvents, gd.blinkPsthInputs.refEvents, gd.handles.hPlotAxes);
-    %TODO - figure out how to have good title for this plot
     
-    guidata(hObj, gd);
+    %reset inputs
+    set(gd.handles.hNumPerms, 'String', '');
+    set(gd.handles.hWRange, 'String', '');
+    set(gd.handles.hSigLowPerm, 'String', '2.5');
+    set(gd.handles.hSigHighPerm, 'String', '97.5');
 end
 
-function LoadRefData(hObj, varargin)
+% TODO: create a reset function
+function resetPsth(~, ~, gd)
+    gd.resetPsth();
     
-    gd = guidata(hObj);
-    
-    
-    [input_file, PathName] = uigetfile('*.csv','Choose a csv file with reference data');
-    if input_file == 0
-        return
-    end
-    input_file_full = dirFileJoin(PathName, input_file);
-
-    %Get reference code
-    prompt = {'Enter reference event code:'};
-    dlg_title = 'Reference Event Code';
-    num_lines = 1;
-    answer = inputdlg(prompt, dlg_title, num_lines);
-    
-    %if user cancels or doesn't enter anything
-    if iscell(answer) && isempty(answer) 
-        return
-    end
-    
-    refCode = str2double(answer{1});
-    if isnan(refCode)
-        errordlg('Reference code must be numeric.');
-        return
-    end
-
-    %TODO get refEventType with radio dlg box
-    refEventType = 'allFrames';
-
-    %TODO - get blinkPsth.startFrame from advanced options
-    startFrame = get(gd.handles.hStartFrameEdit, 'String');
-    startFrame = str2double(startFrame);
-    if isnan(startFrame) || isempty(startFrame) || startFrame <=0
-        w = warndlg('TODO - using default for startFrame','Invalid entry','modal');
-        uiwait(w);
-        startFrame = 1;
-        
-    end
-    gd.blinkPsthInputs.startFrame = startFrame;
-    
-    try 
-        rawRefData = readInPsthEvents(input_file_full); 
-        gd.blinkPsthInputs.refEvents = getRefEvents(rawRefData, refCode, targetEventType, gd.blinkPsthInputs.startFrame); 
-    catch ME
-        gui_error(hObj,ME);
-        return
-    end
-
-    %TODO - edit blinkPsth with stuff for PSTH summary file
-    gd.blinkPsthInputs.refCode = refCode;
-    gd.blinkPsthInputs.refEventType = refEventType;
-
-    %plot both target data AND reference data
+    % clear plot
     cla(gd.handles.hPlotAxes, 'reset');
-    plotTargetAndRef(gd.blinkPsthInputs.targetEvents, gd.blinkPsthInputs.refEvents, gd.handles.hPlotAxes);
-    %TODO - figure out how to have good title for this plot
-
-    guidata(hObj, gd);
+    
+    % reset inputs
+    set(gd.handles.hLagBefore, 'String', '');
+    set(gd.handles.hLagAfter, 'String', '');
+    set(gd.handles.hNumPermsPsth, 'String', '');
+    set(gd.handles.hStartFrameEdit, 'String', '1');
+    set(gd.handles.hInclThreshEdit, 'String', '0.2');
+    set(gd.handles.hSigLowPsth, 'String', '2.5');
+    set(gd.handles.hSigHighPsth, 'String', '97.5');
 end
 
-function RunBlinkPSTH(hObj, varargin)
-    
-    gd = guidata(hObj);
-    
-    %Target and reference events 
-    targetEvents = gd.blinkPsthInputs.targetEvents;
-    refEvents = gd.blinkPsthInputs.refEvents;
-    
-    %Window size before and after event
-    lagBefore = str2double(get(gd.handles.hLagBefore, 'String'));
-    lagAfter = str2double(get(gd.handles.hLagAfter, 'String'));
-    
-    % Num permutations
-    numPerms = str2double(get(gd.handles.hNumPermsPsth,'String'));
-    
-    % Significance thresholds
-    sigLow = str2double(get(gd.handles.hSigLowPsth,'String'));
-    sigHigh = str2double(get(gd.handles.hSigHighPsth,'String'));
-    
-    % Start frame
-    startFrame = str2double(get(gd.handles.hStartFrameEdit, 'String'));
-    
-    % Include threshold
-    inclThresh = str2double(get(gd.handles.hInclThreshEdit, 'String'));
-    
-    % What to save
-    saveMat = gd.output.saveMat;
-    saveCsv = gd.output.saveCsv;
-    saveFigs = gd.output.saveFigs;
-    
-    % Output things
-    outputDir = gd.output.dir;
-    outputPrefix = get(gd.handles.hOutputFile,'String'); %TODO - there is currently no error checking here - remove /\. ?
-    figFormat = gd.output.figFormat;
-    
-    %% Check normal settings
-    
-    error_msgs = {};
-    
-    % TARGET EVENTS
-    if isempty(targetEvents)
-        error_msgs{end+1} = '\tNo target events were loaded.';
-    end
-
-    % REFERENCE EVENTS
-    if isempty(refEvents)
-        error_msgs{end+1} = '\tNo reference events were loaded.';
-    end
-    
-    % WINDOW SIZE BEFORE AND AFTER EVENT
-    if isnan(lagBefore) || isnan(lagAfter) || lagBefore<0 || lagAfter <0
-        error_msgs{end+1} = '\tWindow size before and after event must be positive integers.';
-    else %make it an integer
-        lagBefore = int32(lagBefore);
-        lagAfter = int32(lagAfter);
-        set(gd.handles.hLagBefore, 'String', lagBefore);
-        set(gd.handles.hLagAfter, 'String', lagAfter);
-        lagSize = [lagBefore, lagAfter];
-    end
-    
-    % NUMBER OF PERMUTATIONS
-    if isnan(numPerms) || numPerms < 0 
-        error_msgs{end+1} = '\tNumber of permutations must be a positive number.';
-    elseif numPerms>gd.guiSettings.maxPerms
-        error_msgs{end+1} = sprintf('\tMaximum number of permutations= %i',gd.guiSettings.maxPerms);
-    else %make it an integer
-        numPerms = int32(numPerms);
-        set(gd.handles.hNumPermsPsth, 'String', numPerms);
-    end
-
-    % WHAT TO SAVE
-    % if user wants to save anything, they must specify an output directory
-    if saveMat || saveCsv || saveFigs
-        if isempty(outputDir) || isequal(outputDir, 0)
-            error_msgs{end+1} = '\tOutput directory was not selected.';
-        elseif ~isdir(gd.output.dir)
-            error_msgs{end+1} = '\tOutput directory is invalid.';
-        end
-    end
-    
-    % SIGNIFICANCE 
-    % Sig High must be higher than sig low
-    if sigHigh <= sigLow
-        error_msgs{end+1} = '\tLow significance threshold must be less than high significance threshold.';
-    end
-    
-    % if any of the conditions were not met, create error dialogue with messages and return
-    if ~isempty(error_msgs)
-        dlg_msg = strjoin(error_msgs,'\n');
-        errordlg(sprintf(dlg_msg));
-        return
-    end
-    
-    %% Check advanced settings and revert to defaults if any are invalid
-    
-    % SIGNIFICANCE THRESHOLDS
-    % If significance thresholds are invalid, revert to  defaults
-    if isnan(sigLow) || sigLow>=100 || sigLow<=0
-       w = warndlg('Invalid low significance threshold: using default (2.5)', 'Invalid Entry', 'modal');
-       uiwait(w);
-       set(gd.handles.hSigLowPsth,'String','2.5');
-       sigLow = 2.5;
-    end
-    if isnan(sigHigh) || sigHigh>=100 || sigHigh<=0
-       w = warndlg('Invalid high significance threshold: using default (97.5)', 'Invalid Entry', 'modal');
-       uiwait(w);
-       set(gd.handles.hSigHighPsth,'String','97.5');
-       sigHigh = 97.5;
-    end
-
-    % START FRAME
-    if isnan(startFrame) || startFrame <=0
-        w = warndlg('Invalid start frame - must be positive integer. Using default (1).');
-        uiwait(w);
-        set(gd.handles.hStartFrameEdit, 'String', '1');
-        startFrame = 1;
-    else
-        startFrame = int32(startFrame);
-        set(gd.handles.hStartFrameEdit,'String',startFrame);
-    end
-    
-    % INCLUDE THRESHOLD
-    if isnan(inclThresh) || inclThresh <0 || inclThresh>1
-        w = warndlg('Invalid include threshold - must be between 0 and 1. Using default (.2).');
-        uiwait(w);
-        set(gd.handles.hInclThreshEdit, 'String', '0.2');
-        inclThresh = .2;
-    end
-    
-    %% Create a waitbar to update user with progress
-    hWaitBar = waitbar(0, '1', ...
-        'Name','PSTH',...
-        'CreateCancelBtn', 'setappdata(gcbf,''canceling'',1)');
-    setappdata(hWaitBar, 'canceling', 0)
-    
-    gd.setWaitBar(hWaitBar);
-
-    %% run the analysis
-    try
-        results = blinkPSTH(refEvents, gd.blinkPsthInputs.targetEvents, lagSize, numPerms,...
-                                    'startFrame', startFrame,...
-                                    'inclThresh', inclThresh,...
-                                    'lowPrctile', sigLow,...
-                                    'highPrctile', sigHigh,...
-                                    'hWaitBar', hWaitBar);
-    catch ME
-        delete(hWaitBar);
-        gd.setWaitBar([]);
-        gui_error(hObj,ME);
-        return
-    end
-
-    %%  create figures
-    
-    thingsSaved = 0;
-    thingsToSave = saveFigs + saveCsv + saveMat;
-    
-    if thingsToSave>0
-        waitbar(0, hWaitBar, 'Saving output...');
-    end
-    
-    if ~saveFigs
-        figFormat = ''; %if figFormat is empty, figures will not be saved
-    end
-    
-    try
-%         dirFilePrefix = dirFileJoin(outputDir, outputPrefix);
-%         blinkPermFigures(dirFilePrefix, results, figFormat);
-        blinkPSTHFigures(outputDir, results, figFormat); % [ax1];
-    catch ME 
-        gui_error(hObj,ME);
-    end
-    
-    if saveFigs
-        thingsSaved = thingsSaved + 1;
-        waitbar(thingsSaved/thingsToSave, hWaitBar);
-    end
-
-    %% summary file
-    if saveCsv
-
-        % output csv summary file
-        try
-            blinkPSTHSummary(outputPrefix_full, results);
-        catch ME
-            gui_error(hObj,ME);
-        end  
-    
-        thingsSaved = thingsSaved + 1;
-        waitbar(thingsSaved/thingsToSave, hWaitBar);
-    end 
-    
-    %% save mat file
-    if saveMat
-        
-        % save .mat file in the outputDir
-        try
-            % full path for a mat file:
-            mat_name = sprintf('%sPSTH.mat', outputPrefix);
-            mat_file_full = dirFileJoin(outputDir, mat_name);
-            save(mat_file_full, 'results'); %TODO - choose what to save - results + inputs?
-        catch ME
-            gui_error(hObj,ME);
-        end
-        
-        thingsSaved = thingsSaved + 1;
-        waitbar(thingsSaved/thingsToSave, hWaitBar);
-    end
-    
-    %% Delete progress bar
-    delete(hWaitBar);
-    gd.setWaitBar([]);
-    
-    %% Save guidata - TODO i think this is unnecessary?
-    guidata(hObj, gd);
-end
-
-%%
-function CloseGUI(hObj,varargin)
-    %TODO - fix this!
-    gd = guidata(hObj);
+% What to do on closing
+function cbCloseGUI(hObj, ~, gd)
     if ~isempty(gd.handles.hWaitBar)
         delete(gd.handles.hWaitBar);
     end
     
+    %delete guidata and hobj
     delete(hObj);
 end
 

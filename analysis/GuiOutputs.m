@@ -10,7 +10,7 @@ classdef GuiOutputs < handle
         saveCsv = 1;
         saveMat = 1;
         saveFigs = 1;
-        figFormat;% = 'jpg'; 
+        figFormat = '';
     end
     
     methods
@@ -21,9 +21,8 @@ classdef GuiOutputs < handle
                    strcmpi(value,'fig') || ...
                    strcmpi(value,'png') || ...
                    strcmpi(value,'tif') || ...
-                   strcmpi(value,'bmp') ||...
                    strcmpi(value, ''))
-               error('Fig format must be empty or one of the following: jpg, pdf, eps, fig, png, tif, bmp')
+               error('Fig format must be empty or one of the following: jpg, pdf, eps, fig, png, tif')
            end
            obj.figFormat = value;
         end

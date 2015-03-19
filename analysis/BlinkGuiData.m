@@ -6,10 +6,10 @@ classdef BlinkGuiData < handle
 % Very little error checking
    
     properties 
-        guiSettings; %= GuiSettings; %settings
-        output; %= GuiOutputs; %from output panel
-        blinkPermInputs; %= BlinkPermInputs; % for blinkPerm
-        blinkPsthInputs; %= BlinkPsthInputs; % for blinkPSTH
+        guiSettings; %settings
+        output; %from output panel
+        blinkPermInputs; %for blinkPerm
+        blinkPsthInputs; %for blinkPSTH
     end
     
     properties (SetAccess = private)
@@ -18,7 +18,7 @@ classdef BlinkGuiData < handle
     
     methods
         
-        %constructor
+        % constructor
         function obj = BlinkGuiData()
             obj.guiSettings = GuiSettings; %settings
             obj.output = GuiOutputs; %from output panel
@@ -26,9 +26,18 @@ classdef BlinkGuiData < handle
             obj.blinkPsthInputs = BlinkPsthInputs; % for blinkPSTH
         end
         
+        % reset blink perm stuff
+        function obj = resetPerm(obj)
+           obj.blinkPermInputs = BlinkPermInputs;
+        end
         
-        %Verify GUI settings
-        function obj = set.guiSettings(obj, value)
+        % reset blink psth stuff
+        function obj = resetPsth(obj)
+            obj.blinkPsthInputs = BlinkPsthInputs;
+        end
+        
+        %% Verify GUI settings
+        function set.guiSettings(obj, value)
             if isa(value, 'GuiSettings')
                 obj.guiSettings = value;
             else
@@ -36,7 +45,7 @@ classdef BlinkGuiData < handle
             end
         end
         
-        function obj = set.output(obj, value)
+        function set.output(obj, value)
             if isa(value, 'GuiOutputs')
                 obj.output = value;
             else
@@ -44,7 +53,7 @@ classdef BlinkGuiData < handle
             end
         end
         
-        function obj = set.blinkPermInputs(obj, value)
+        function set.blinkPermInputs(obj, value)
             if isa(value, 'BlinkPermInputs')
                 obj.blinkPermInputs = value;
             else
@@ -52,7 +61,7 @@ classdef BlinkGuiData < handle
             end
         end
         
-        function obj = set.blinkPsthInputs(obj, value)
+        function set.blinkPsthInputs(obj, value)
             if isa(value, 'BlinkPsthInputs')
                 obj.blinkPsthInputs = value;
             else
@@ -60,14 +69,15 @@ classdef BlinkGuiData < handle
             end
         end
         
-        %create handles object
-        function obj = setHandles(obj, guiHandle)
+        %% Handles object
+        %create handles object, given the handle to a parent figure
+        function setHandles(obj, guiHandle)
             obj.handles = guihandles(guiHandle);
             obj.handles.hWaitBar = [];
         end
         
         %Add a wait bar to handles
-        function obj = setWaitBar(obj, waitBar)
+        function setWaitBar(obj, waitBar)
             obj.handles.hWaitBar = waitBar; 
         end
 

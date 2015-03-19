@@ -37,6 +37,8 @@ try
     elseif strcmpi(formatType,'3col')
         blinks_3col = csvread(filename);
         [blinks,~] = blink3ColConvert(blinks_3col, sampleLen);
+    else
+        error('Unknown formatType %s', formatType);
     end
     
 catch ME

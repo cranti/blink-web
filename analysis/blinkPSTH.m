@@ -32,6 +32,15 @@ function results = blinkPSTH(refEvents, targetEvents, lagSize, numPerms, varargi
 %                   (used in permutation testing). Default is 2.5
 %   'highPrctile'   High percentile to test for significantly higher blinking
 %                   (used in permutation testing). Default is 97.5
+%   'refSetLen'     Numeric vector containing the original length of each 
+%                   reference event set. This is a variable output by
+%                   GETREFEVENTS. If this parameter is passed in, it's used
+%                   for error checking only: the script verifies that the
+%                   length of each of the targetEvent sets matches the
+%                   length reported by 
+%                   If this is passed in, it's just used for error
+%                   checking: 
+%   'hWaitBar'      Handle to a waitbar to update user with progress
 %
 %
 % OUTPUT
@@ -73,6 +82,7 @@ function results = blinkPSTH(refEvents, targetEvents, lagSize, numPerms, varargi
 %       * If permutation testing is not run, this is an empty struct.
 %       
 %       inputSpecs - struct with details about the inputs provided
+%           lagSize - size of the window on either side of the event
 %           numTargets - number of entries in targetEvents
 %           numRefSets - number of entries in refEvents
 %           targetLens - length of each entry in targetEvents
@@ -84,49 +94,38 @@ function results = blinkPSTH(refEvents, targetEvents, lagSize, numPerms, varargi
 % SEE ALSO: GETREFEVENTS, GETTARGETEVENTS, BLINKPSTHSUMMARY, BLINKPSTHFIGURES
 
 % Written by Carolyn Ranti
-% 3.3.2015
+% 3.19.2015
 % Adapted from code written by Jenn Moriuchi, Grace Ann Marrinan, and Sarah Shultz
-
-% TODO - add to GUI/summary writing file
-%         refEventType - reference event type
-%         refCode - reference code
-%         targetEventType - target event type
-%         targetCode - target code
-
-% TODO - write a data quality check script for GUI
-
-warning('THIS CODE HAS NOT BEEN THOROUGHLY CHECKED YET');
 
 %% Set up
 
-assert(iscell(targetEvents), 'Error in blinkPSTH: targetEvents must be a cell');
-assert(iscell(refEvents), 'Error in blinkPSTH: refEvents must be a cell');
+assert(iscell(targetEvents), 'targetEvents must be a cell.');
+assert(iscell(refEvents), 'refEvents must be a cell.');
 
 numTargets = length(targetEvents);
 numRefSets = length(refEvents);
 allDataLens = cellfun(@length, targetEvents);
 
 if numRefSets > 1 && numRefSets ~= numTargets
-    error('Error in blinkPSTH: If more than one reference set is provided, there must be exactly one per individual.')
+    error('If more than one reference set is provided, there must be exactly one per individual.')
 end
 
 %Check that reference frames are <= length of each corresponding target data set
 maxRefValue = cellfun(@max, refEvents);
-assert(prod(allDataLens >= maxRefValue) == 1, 'Error in blinkPSTH: all reference event indices must be <= length of the target data');
+assert(prod(allDataLens >= maxRefValue) == 1, 'All reference event indices must be <= length of the target data.');
 
 %Check that all vectors in targetEvents are ROW VECTORS. 
-assert(prod(cellfun(@isrow, targetEvents)) == 1, 'Error in blinkPSTH: entries in targetEvents must be row vectors');
+assert(prod(cellfun(@isrow, targetEvents)) == 1, 'Entries in targetEvents must be row vectors.');
 
 %Check that lagSize has 2 values
-assert(length(lagSize)==2 && isnumeric(lagSize), 'Error in blinkPSTH: LagSize must be a vector with 2 numbers.');
+assert(length(lagSize)==2 && isnumeric(lagSize), 'LagSize must be a vector with 2 numbers.');
 windowSize = sum(lagSize) + 1;
 
 %Figure out whether to run permutation test
 runPermTest = (nargin>=4) && (~isempty(numPerms)) && (numPerms >= 0);
 
-
 %% Parse optional inputs and check
-assert(mod(length(varargin),2)==0, 'Error in blinkPSTH: Odd number of optional parameters (must be name, value pairs)');
+assert(mod(length(varargin),2)==0, 'Odd number of optional parameters (must be name, value pairs)');
 
 %defaults
 startFrame = 1;
@@ -156,67 +155,133 @@ for v = 1:2:length(varargin)
            if ~isnumeric(highPrctileLevel) || ~isscalar(highPrctileLevel) || highPrctileLevel<0 || highPrctileLevel>100
                error('highPrctile must be a numeric value between 0 and 100');
            end
-       otherwise
-           warning('Unknown parameter - skipping (%s)', varargin{v});
+       case 'refsetlen'
+           refSetLen = varargin{v+1};
+           if ~isnumeric(refSetLen)
+               error('refSetLen must be numeric');
+           end
+           
+           if length(refSetLen) == 1
+               if ~sum(allDataLens == refSetLen)
+                  error('Mismatch between length of target event sets and length of reference event set.');
+               end 
+           elseif length(refSetLen) == numRefSets
+               if (isrow(refSetLen) && ~isrow(allDataLens)) || (~isrow(refSetLen) && isrow(allDataLens))
+                   refSetLen = refSetLen';
+               end
+               if ~isequal(allDataLens, refSetLen)
+                  error('Mismatch between length of target event sets and length of reference event sets.');
+               end
+           else
+               error('refSetLen must contain one value per set of reference data passed in.');
+           end
+           
+       case 'hwaitbar'
+           hWaitBar = varargin{v+1};
+           %make sure it's a valid handle
+           if ishandle(hWaitBar)
+               haswaitbar = 1;
+           end
    end
 end
 
 
 %% Calculate cross-correlogram
+if haswaitbar
+    tstart = tic; 
+    waitbar(0, hWaitBar, 'Creating PSTH...');
+end
 
-results = makePSTH(refEvents, targetEvents, lagSize, startFrame, inclThresh);
+results = makePSTH(refEvents, targetEvents, lagSize, startFrame, inclThresh, 0);
+
+%have it take at least 1/2 second (for message to be visible in waitbar)
+if haswaitbar
+    while toc(tstart) < .5; end 
+    waitbar(1, hWaitBar);
+end
 
 %% Permutation testing
-
 if runPermTest
+    if haswaitbar
+        waitbar(0, hWaitBar, 'Running Permutation Test...');
+    end
+    
     permResults = zeros(numPerms, windowSize);
-    permutedData = targetEvents; %initialize as targetEvents (but it's overwritten in each loop)
+    permutedData = targetEvents; %initialize as targetEvents (overwritten in each loop)
 
     for p = 1:numPerms
-        % circshift data: shift each subject independently 
-        shiftSizes = round(allDataLens*rand(numTargets,1));
-        for ii = 1:numTargets
-            permutedData{ii} = circshift(targetEvents{ii}, shiftSizes(ii), 2); %TODO - check this/make sure that 
+        
+        if haswaitbar
+            %Check for Cancel button press
+            if getappdata(hWaitBar,'canceling')
+                results = struct();
+                return
+            end
         end
-        temp = makePSTH(refEvents, permutedData, lagSize, startFrame, inclThresh);
-        permResults(p,:) = temp.psth;
+        
+        % circshift data: shift each subject independently 
+        shiftSizes = round(allDataLens.*rand(1,numTargets));
+        for ii = 1:numTargets
+            permutedData{ii} = circshift(targetEvents{ii}, shiftSizes(ii), 2); %TODO - check this/make sure that dimensions are correct
+        end
+        
+        permResults(p,:) = makePSTH(refEvents, permutedData, lagSize, startFrame, inclThresh, 1); 
+    
+        %Update progress bar
+        if haswaitbar
+            waitbar(double(p)/double(numPerms), hWaitBar);
+        end
+    
     end
 
+    if haswaitbar
+        tstart = tic;
+        waitbar(0, hWaitBar,'Calculating Significance...');
+    end
+    
     % Add low and high percentile values to results
     results.permTest.numPerms = numPerms;
     results.permTest.lowPrctileLevel = lowPrctileLevel;
     results.permTest.highPrctileLevel = highPrctileLevel;
-    results.permTest.lowPrctile = prctile(permResults, lowPrctileLevel);
-    results.permTest.highPrctile = prctile(permResults, highPrctileLevel);
-    results.permTest.mean = mean(permResults); %TODO - consider whether to make this median 
+    results.permTest.lowPrctile = prctile(permResults, lowPrctileLevel, 1);
+    results.permTest.highPrctile = prctile(permResults, highPrctileLevel, 1);
+    results.permTest.mean = mean(permResults);
+    
+    if haswaitbar
+        while toc(tstart) < .5; end 
+        waitbar(1, hWaitBar);
+    end
+    
 else
-    results.permTest = struct();
+    results.permTest.numPerms = 0;
+    results.permTest.lowPrctileLevel = 0;
+    results.permTest.highPrctileLevel = 0;
+    results.permTest.lowPrctile = [];
+    results.permTest.highPrctile = [];
+    results.permTest.mean = [];
 end
 
 %% Add input specs
+results.inputSpecs.lagSize = lagSize;
 results.inputSpecs.numTargets = numTargets;
 results.inputSpecs.numRefSets = numRefSets;
 results.inputSpecs.targetLens = cellfun(@length, targetEvents);
 results.inputSpecs.refLens = cellfun(@length, refEvents);
 results.inputSpecs.inclThresh = inclThresh;
 results.inputSpecs.startFrame = startFrame;
-
 end
 
 
 %% Make a peri-stimulus time histogram
-function results = makePSTH(refEvents, targetEvents, lagSize, startFrame, inclThresh)
-    
+function results = makePSTH(refEvents, targetEvents, lagSize, startFrame, inclThresh, PERMFLAG)
+%PERMFLAG - if 1, indicates permutation testing. Output is the overallPSTH,
+%rather than the entire struct. Also, some counters are skipped
+
     numRefSets = length(refEvents);
     numIndivs = length(targetEvents);
     windowSize = sum(lagSize) + 1;
 
-    % Set counters at 0
-    nRefSetsNoEvents = 0; %number of reference sets with no events
-    nTargetPadding = zeros(1,3); %leftFill, rightFill, both
-
-    indivPSTH = zeros(numIndivs, windowSize);
-
+    % If there is only 1 ref set, it must have events in it
     if numRefSets == 1
         refFrames = refEvents{1};  
         if isempty(refFrames)
@@ -224,10 +289,15 @@ function results = makePSTH(refEvents, targetEvents, lagSize, startFrame, inclTh
         end
     end
 
-    %preallocate storage vars
-    indivTotalRefEvents = nan(numIndivs,1); %number of reference events for each 
-    indivUsedRefEvents = nan(numIndivs,1);
-    
+    % Set counters at 0
+    nRefSetsNoEvents = 0; %number of reference sets with no events
+    nTargetPadding = zeros(numIndivs,3); %leftFill, rightFill, both
+    indivTotalRefEvents = zeros(numIndivs,1); %total reference events for each target
+    indivUsedRefEvents = zeros(numIndivs,1); %total ref events *used* for each target
+
+    % initialized indivPSTH with NaNs
+    indivPSTH = nan(numIndivs, windowSize);
+
     % Loop through target group participants
     for targ = 1:numIndivs 
 
@@ -235,19 +305,16 @@ function results = makePSTH(refEvents, targetEvents, lagSize, startFrame, inclTh
         if numRefSets>1     
             refFrames = refEvents{targ};
 
-            % If no reference frames, skip ahead 
-            % (this condition has already been checked if there's only one ref. set)
+            % If no reference frames, skip ahead
+            %  > this has been checked if there's only 1 ref set
             if isempty(refFrames)
                 nRefSetsNoEvents = nRefSetsNoEvents + 1;
-                indivPSTH(targ,:) = NaN(1, windowSize);
                 continue
             end
         end
 
         % get target data
         thisTarget = targetEvents{targ};
-        
-        % length of this person's data
         dataLen = length(thisTarget);
 
         % Loop through reference frames in the reference set
@@ -255,10 +322,17 @@ function results = makePSTH(refEvents, targetEvents, lagSize, startFrame, inclTh
         refFrameCount = 0; %counter - how many reference frames were used
         for r = 1:length(refFrames)
 
-            timeZero = refFrames(r);
             
             % Define target window around timeZero.
-            target = thisTarget(max(startFrame,(timeZero-lagSize(1))):min(dataLen,(timeZero+lagSize(2))));
+            timeZero = refFrames(r);
+            TS = max(startFrame, (timeZero-lagSize(1)));
+            TE = min(dataLen, (timeZero+lagSize(2)));
+            target = thisTarget(TS:TE);
+
+            % If there is not enough included data, continue
+            if sum(~isnan(target)) < inclThresh*windowSize
+                continue
+            end
             
             %Pad, if necessary, with 0s.
             leftFill = []; rightFill = [];
@@ -268,44 +342,44 @@ function results = makePSTH(refEvents, targetEvents, lagSize, startFrame, inclTh
             if (timeZero + lagSize(2)) > dataLen
                 rightFill = zeros(1,(timeZero+lagSize(2))-dataLen);
             end
-            
             target = [leftFill, target, rightFill];
             
-            %Advance padding counters
-            if ~isempty(leftFill) && ~isempty(rightFill) %both
-                nTargetPadding(3) = nTargetPadding(3) + 1;
-            elseif ~isempty(leftFill) %just left
-                nTargetPadding(1) = nTargetPadding(1) + 1;
-            elseif ~isempty(rightFill) %just right
-                nTargetPadding(2) = nTargetPadding(2) + 1;
+            % Advance padding counters
+            % (only if you're not doing permutation testing)
+            if ~PERMFLAG
+                if ~isempty(leftFill) && ~isempty(rightFill) %both
+                    nTargetPadding(targ, 3) = nTargetPadding(targ, 3) + 1;
+                elseif ~isempty(leftFill) %just left
+                    nTargetPadding(targ, 1) = nTargetPadding(targ, 1) + 1;
+                elseif ~isempty(rightFill) %just right
+                    nTargetPadding(targ, 2) = nTargetPadding(targ, 2) + 1;
+                end
             end
+
+            % Add hits
+            refFrameCount = refFrameCount + 1;
+            tempCrossCorrCounters = nansum([tempCrossCorrCounters;target], 1);
             
-            % Add hits (as long as there's enough included data)
-            if sum(~isnan(target)) > inclThresh*dataLen
-                refFrameCount = refFrameCount + 1;
-                target(isnan(target)) = 0;
-                tempCrossCorrCounters = tempCrossCorrCounters + target;
-            end
         end
         
         % Average across number of reference events and store this
         % individual's PSTH
         if refFrameCount > 0
             indivPSTH(targ,:) = tempCrossCorrCounters ./ refFrameCount;
-        else 
-            indivPSTH(targ,:) = NaN(1, windowSize);
-        end
         
-        %store the number of reference events (per person) and the number
-        %of reference events used (i.e. the number with a sufficient amount
-        %of included data)
-        indivTotalRefEvents(targ) = length(refFrames);
-        indivUsedRefEvents(targ) = refFrameCount;
+            if ~PERMFLAG
+                %store the number of reference events (per person)
+                indivTotalRefEvents(targ) = length(refFrames);
+
+                % # reference events used (i.e. # with enough included frames)
+                indivUsedRefEvents(targ) = refFrameCount;
+            end
+        end
         
     end %end of target loop
 
     % If none of the reference sets had events
-    if nRefSetsNoEvents== numRefSets
+    if nRefSetsNoEvents == numRefSets
         error('No reference events.');
     end
     
@@ -313,11 +387,15 @@ function results = makePSTH(refEvents, targetEvents, lagSize, startFrame, inclTh
     overallPSTH = nanmean(indivPSTH,1);
 
     %% results struct
-    results = struct();
-    results.psth = overallPSTH;
-    results.indivPSTH = indivPSTH;
-    results.indivTotalRefEventN = indivTotalRefEvents;
-    results.indivUsedRefEventN = indivUsedRefEvents;
-    results.nRefSetsNoEvents = nRefSetsNoEvents;
-    results.nTargetPadding = nTargetPadding;
+    if PERMFLAG %if permutation testing, only output the psth
+        results = overallPSTH;
+    else
+        results = struct();
+        results.psth = overallPSTH;
+        results.indivPSTH = indivPSTH;
+        results.indivTotalRefEventN = indivTotalRefEvents;
+        results.indivUsedRefEventN = indivUsedRefEvents;
+        results.nRefSetsNoEvents = nRefSetsNoEvents;
+        results.nTargetPadding = nTargetPadding;
+    end
 end

@@ -1,13 +1,15 @@
-function blinkPSTHFigures(dirToSave, results, figFormat, axesH)
+function blinkPSTHFigures(prefix, results, figFormat, axesH)
 %BLINKPSTHFIGURES - Plot the results from blinkPSTH.m
 %
 % Inputs:
-%   dirToSave   Path to directory where figures will be saved.
+%   prefix      Prefix for name of file saved. Can include a path, if you
+%               don't want to save in current directory.
 %   results     Results struct from blinkPSTH.m
-%   figFormat   Format for figures. Must be one of the following:
-%               'bmp', 'eps', 'fig', 'jpg', 'pdf', 'png', 'tif'
-%   axesH       Optional. Axis handle where results will be plotted.
-%               If this is not passed in, a new figure is created.
+%   figFormat   Optional. Format for figures. Must be one of the following:
+%               'eps', 'fig', 'jpg', 'pdf', 'png', 'tif'
+%   axesH       Optional. Vector with 2 axes handles where results will be
+%               plotted. If this is not passed in, or if any of the handles
+%               are NaN, new figures are created as needed.
 %
 % If figFormat is empty, results will be plotted, but the figures will
 % not be saved.
@@ -15,58 +17,126 @@ function blinkPSTHFigures(dirToSave, results, figFormat, axesH)
 % See also BLINKPSTH
 
 % Carolyn Ranti
-% 2.23.2015
+% 3.19.2015
 
-%TODO - this isn't going to work, because of the changes to blinkPSTH
-%output...
 
-narginchk(3,4);
+%%
+narginchk(2,4);
+
+if nargin == 2
+    figFormat = '';
+end
 
 if ~isempty(figFormat)
-    assert(sum(strcmp(figFormat,{'bmp', 'eps', 'fig', 'jpg', 'pdf', 'png', 'tif'}))==1,'Invalid figure format.');
+    assert(sum(strcmp(figFormat,{'eps', 'fig', 'jpg', 'pdf', 'png', 'tif'}))==1,'Invalid figure format.');
+end
+
+if nargin < 4 || length(axesH)~=2
+    axesH = [NaN NaN];
 end
 
 try 
-    xValues = length(results.crossCorr) - (length(results.crossCorr)+1)/2;
-    numPerms = results.inputs.numPerms;
+    xValues = (1:length(results.psth)) - (length(results.psth)+1)/2;
+    numPerms = results.permTest.numPerms;
     
-    %% Figure - bar graph with 5th and 95th percentiles plotted
-    if nargin == 4
+    %% Figure 1 - bar graph with 5th and 95th percentiles plotted
+    
+    if isnan(axesH(1))
         figure();
-        axesH = gca;
+        ax1 = gca;
+    else
+        ax1 = axesH(1);
     end
-    hold(axesH,'on');
+    hold(ax1,'on');
     
     % bar graph
-    bar(axesH, xValues, results.crossCorr, 'k');
-    plot(axesH, xValues, results.prctile05, 'b');
-    plot(axesH, xValues, results.prctile95, 'r');
+    bar(ax1, xValues, results.psth, 'w');
     
-    legend(axesH, {'Peri-stimulus time histogram','5th percentile','95th percentile'});
-    title(axesH, {'Peri-stimulus time histogram',sprintf('Number of Permutations=%i',numPerms)});
-    xlabel(axesH, 'Event offset (frames)');
-    ylabel(axesH, 'Blink rate (blinks/min)');
+    %start legend text:
+    legendText = {'Peri-stimulus time histogram'};
+    titleText = {'Peri-stimulus time histogram'};
     
-    hold(axesH,'off');
+    if numPerms > 0
+        plot(ax1, xValues, results.permTest.lowPrctile, 'b');
+        legendText{end+1} = sprintf('%.2f percentile', results.permTest.lowPrctileLevel);
+        
+        plot(ax1, xValues, results.permTest.highPrctile, 'r');
+        legendText{end+1} = sprintf('%.2f percentile', results.permTest.highPrctileLevel);
+        
+        %add to title
+        titleText{end+1} = sprintf('Number of Permutations=%i', numPerms);
+    end
+    
+    xlim([min(xValues)-1, max(xValues)+1]);
+    
+    %add a vertical line at the event time
+    yrange = ylim(ax1);
+    plot(ax1, [0 0], yrange, '--k');
+    
+    %label plot
+    legend(ax1, legendText);
+    title(ax1, titleText);
+    xlabel(ax1, 'Event offset (samples)');
+    ylabel(ax1, 'Average Blink Count');
+    
+    hold(ax1,'off');
+    
+    %% Figure 2 - plot results minus the mean from the permutation test
+    
+    %only do this plot if the perm test has a "mean" field
+    if ~isempty(results.permTest.mean)
+    
+        if isnan(axesH(2))
+            figure();
+            ax2 = gca;
+        else
+            ax2 = axesH(2);
+        end
+        hold(ax2,'on');
+
+        % calculate percent change from mean
+        rChangeFromMean = (results.psth - results.permTest.mean)./results.permTest.mean;
+        lowChangeFromMean = (results.permTest.lowPrctile - results.permTest.mean)./results.permTest.mean;
+        highChangeFromMean = (results.permTest.highPrctile - results.permTest.mean)./results.permTest.mean;
+        
+        % bar graph
+        bar(ax2, xValues, rChangeFromMean, 'w');
+        plot(ax2, xValues, lowChangeFromMean, 'b');
+        plot(ax2, xValues, highChangeFromMean, 'r');
+        
+        xlim([min(xValues)-1, max(xValues)+1]);
+        
+        %add a vertical line at the event time
+        yrange = ylim(ax2);
+        plot(ax2, [0 0], yrange, '--k');
+        
+        %label plot
+        legend(ax2, {'Peri-stimulus time histogram',...
+                    sprintf('%.2f percentile', results.permTest.lowPrctileLevel),...
+                    sprintf('%.2f percentile', results.permTest.highPrctileLevel)});
+        title(ax2, {'PSTH: Percent Change From Mean',sprintf('Number of Permutations=%i',numPerms)});
+        xlabel(ax2, 'Event offset (samples)');
+        ylabel(ax2, '% Change From Mean');
+
+        hold(ax2,'off');
+    end
     
 catch ME
-    err = MException('BlinkGUI:plotting','Error plotting peri-stimulus time histogram.');
+    err = MException('BlinkGUI:plotting','Error plotting PSTH results.');
     err = addCause(err,ME);
     throw(err);
 end
 
-%% 
+
+%% Save figures
+
 try
     if ~isempty(figFormat)
-        origDir = pwd;
-        cd(dirToSave);
-        saveas(axesH,['PSTH.',figFormat]);
-        cd(origDir);
+        saveas(ax1,[prefix,'PSTH.',figFormat]);
+        saveas(ax2,[prefix,'PSTHminusMean.',figFormat]);
     end
-catch
-    cd(origDir);
-
-    err = MException('BlinkGUI:plotting', 'Error saving peri-stimulus time histogram figures.');
-    err = addCause(err,ME);
+catch ME
+    err = MException('BlinkGUI:plotting', 'Error saving PSTH figures.');
+    err = addCause(err, ME);
     throw(err);
 end
