@@ -1,55 +1,49 @@
 function hMain = blinkGUI()
-DEV = 1;
-% > have multiple analysis types available in one GUI, and change input
-%       fields according to the analysis type (uitoggletool?)
-% > output useful error messages from all subfunctions
-% > reset anything when new file is loaded?
+%LATER
 % > have a window with version info, my name, website, etc.
 % > help documentation --> send to website, contact info
 % > uimenu, uitoolbar --> have different menus and toolbars?
 % > windows path joining... will need to change some hard-coded things
 % > logging: how to set a location for log file?
 % > specs file? 
-% > what to do upon closing the figure? (fclose all, etc)
-% > change all "frame" to "sample #"
-
-% position the figures next to the GUI
-
-% something is going wrong with the plotting of blink permutation results
-
-% warnings about no significant blink inhibition (permutation test at
-% floor) -- from GUI and in summary file?
-
-% NOTE: input specs have changed slightly: subjects should each have a
-% column, and frames should be in rows (better for excel limits).
-    % think about excel limits when considering how much data to accept --
-    % 1/2 many rows - a few, max of how many subjects?
-
-% > Make it so that can't switch between analyses while it's running!!
-
-%GUIDATA
-% Use GUIDATA consistently within each function: break vars out into local variables, but don't
-% bother to break out handles (because they aren't changing...)
-
-% TODO - add subject order to PSTH, now that 3 column format is an option?
-
-% write a data quality script - check things before running analyses?
+% > what to do upon closing the figure? (delete GUIDATA, etc)
+% > add 'TooltipString' properties for each item?
+% > add 'UIContextMenu'?
+% > memory considerations: what should happen when you toggle between
+%   analyses? reset things?
 
 %FUNCTIONALITY TO ADD
-%   > clear data that is loaded (particularly in psth, where you need multiple files...) 
-%   > sort PSTH data by density/by original order
-%   > only plot a few subjects if there's more than one ref set
-%   > scroll through the plots of raw blink data
-%   > scroll through the plots of PSTH data
+% > scroll through things plotted within the GUI
+%       > sort PSTH data by density/by original order
+%       > only plot a few subjects if there's more than one ref set
+%       > scroll through the plots of raw blink data
+%   	> scroll through the plots of PSTH data
+% > plot everything when it's popped out? consider revamping that subfxn
+% > write a data quality script - check things before running analyses?
+% > warnings about no significant blink inhibition (permutation test at
+%   floor) -- from GUI and in summary file?
 
-% add filename to blinkPermSummary
 
-% add DRAWNOW functionality
+%SMALLER BUGS/THINGS TO FIX
+% > position the figures next to the GUI
+% > toggleBigButtons - can I prevent user from updating other things in the
+%   GUI while analyses are running?
+% > add subject order to PSTH, now that 3 column format is an option?
+% > add filenames to BLINKMOD output
 
-% add 'TooltipString' properties for each item?
-% add 'UIContextMenu'?
 
-% Maybe I should just reset the data when I toggle between analyses...
+%GENERAL NOTES:
+% > input specs have changed slightly: subjects should each have a
+%   column, and frames should be in rows (better for excel limits).
+% > think about upper limits for data that we can process -- how many
+%   frames? subjects? (think about excel limitations for printing out data)
+% > standardize language/terms ("sample" rather than "frame", etc)
+
+
+%%
+
+DEV = true;
+
 
 %% Initialize GUIDATA
 %this is a class containing a bunch of default settings 
