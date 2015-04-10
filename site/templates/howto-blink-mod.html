@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-title">
+	<h1>Blink Inhibition</h1>
+	Determine when a group of viewers is engaged
+</div>
+
+<br>
+<div class="section-list">
+	<a href="#prep">Prepare Data</a>
+	<a href="#inputs">Inputs and Settings</a>
+	<a href="#outputs">Outputs</a>
+	<a href="#run">Run Analysis</a>
+	<a href="#trouble">Troubleshooting</a>
+</div>
+
+
+ <figure>
+  	<img src="../../static/figs/blankGUI_perm.png" alt="blinkmod blank app">
+</figure> 
+
+
+<div class="section-title">
+	<a name="prep">Prepare Data</a>
+	<a href="#" class="to-top">[Back to the top]</a>
+</div>
+
+<div class="section-content">
+	<div class="content1">
+		To run this analysis, you need:
+			<ul class="content2">
+				<li>A set of participants who viewed the same stimulus</li>
+				<li>Data indicating when each participant blinked</li>
+			</ul>
+	</div>
+
+	<div class="content1">
+		Blink data must be saved in a csv file. There are two acceptable formats:
+
+		<ol class="content2">
+			<li>
+				<b>One subject per column</b>
+				<ul>
+					<li>Each column contains data from one participant </li>
+					<li>Each row is a sample 
+						<ul>
+							<li>Data should be collected at a constant sample rate </li>
+							<li>Samples should be aligned in time across participants </li>
+						</ul>
+					</li>
+					<li>There are three acceptable values:
+						<ul>
+							<li><b>1</b> indicates that a blink was occurring at a sampled time point</li>
+							<li><b>0</b> indicates no blink</li>
+							<li><b>NaN</b> indicates lost data (i.e. unknown whether the participant was blinking)</li>
+						</ul>
+					</li>
+				</ul>
+			</li>
+			<li>
+				<b>Three column format</b>
+				<ul>
+					<li>Each blink (from all subjects) appears in a separate row</li>
+					<li>Three columns (in the following order, no header row):
+						<ol>
+							<li><b>Participant identifier</b> – unique to each participant (numeric value)</li>
+							<li><b>Blink start</b> – sample when blink began (integer)</li>
+							<li><b>Blink end</b> – sample when blink ended (integer)</li>
+						</ol>
+					</li>
+					<li>If this format is selected, you need to specify the length of the data collected, in number of samples
+					</li>
+				</ul>
+			</li>
+		</ol>
+	</div>
+
+	<div class="content1">
+		<a href="#">[DOWNLOAD EXAMPLE DATA SET (create toy data!)]</a>
+	</div>
+
+</div>
+
+
+<div class="section-title">
+	<a name="inputs">Inputs and Settings</a>
+	<a href="#" class="to-top">[Back to the top]</a>
+</div>
+
+<div class="section-content">
+	<div class="content1">
+		1. &nbsp;Select "Raw Blinks" to load data
+		<div class="content2">
+			After a <b>csv file</b> has been selected, dialog boxes will appear:
+				<ul class="content2">
+					<li>Select <b>file format</b> (<em>One set per column</em> or <em>Three column format</em>)</li>
+					<li>Enter <b>sample length</b> (only if file is in <em>Three column format</em>)</li>
+					<li>Enter <b>sample rate</b> (in samples/sec)</li>
+				</ul>
+		</div>
+		<div class="content2">
+			<a href="#">Instantaneous blink rate</a> will be plotted in the application:
+				<div class="content2">
+  					<img src="../../static/figs/inputPlotCrop.png" alt="Inst BR plot">
+				</div>
+
+				<ul class="content2">
+					<li>Use the right and left arrows by the x axis to scroll through the data</li>
+					<li>To view the plot in a separate window, right click and select "Pop out figure"</li>
+				</ul>
+		</div>
+	</div>
+
+
+	<div class="content1">
+		2. &nbsp;Specify the <b><a href="#">number of permutations</a></b> for statistical testing <em>(max: 10,000)</em>
+	</div>
+
+	<div class = "content1">
+		3. &nbsp;Advanced settings (optional)
+		<ul class="content2">
+			<li>Specify <b>bandwidths</b> to consider in <a href="#">optimization of the Gaussian smoothing kernel</a>. User can specify a single value or a range (min:[step]:max)</li>
+			<li>Set <b>significance thresholds</b> for the permutation test</li>
+		</ul>
+	</div>
+</div>
+
+
+<div class="section-title">
+	<a name="outputs">Outputs</a>
+	<a href="#" class="to-top">[Back to the top]</a>
+</div>
+
+<div class="section-content">
+	<div class="content1">
+		Results will be plotted in a separate window. Use checkboxes to specify which outputs should be <em>saved</em>.
+	</div>
+
+	<div class = "content1">
+		<b>Summary csv</b> (BLINK_MODsummary.csv)
+
+		<div class="content2">
+			 Comprehensive summary document, containing the following sections:
+
+			<ul class = "content2">
+				<li><b>INPUTS</b> - full path to input file, sample rate, number of individuals, number of permutations</li>
+				<li><b>SMOOTHING</b> 
+					<ul>
+						<li>Bandwidth selection - always sskernel (TODO change this)</li>
+						<li>Gaussian kernel bandwidth - standard deviation of the Gaussian kernel used to smooth data</li>
+					</ul>
+				</li>
+				<li><b>SIGNIFICANT FRAMES</b>
+					<ul>
+						<li>Decreased blinking - sample(s) in which group blink rate is significantly lower, assessed via permutation testing</li>
+						<li>Increased blinking - sample(s) in which group blink rate is significantly higher, assessed via permutation testing</li>
+					</ul>
+				</li>
+				<li><b>ALL FRAMES</b> <em>(one sample per row)</em>
+					<ul>
+						<li>Smoothed blink rate – smoothed group blink rate in each sample (blinks/min)</li>
+						<li>Low percentile – low percentile of the permutation test for each sample</li>
+						<li>High percentile – high percentile of the permutation test for each sample</li>
+					</ul>
+
+				</li>
+			</ul>
+		</div>
+	</div>
+
+	<div class = "content1">
+		<b>Figure</b> (BLINK_MOD.jpg)
+
+		<div class="content2">
+			One plot showing smoothed group blink rate, low and high percentiles of the permutation test, and times when the smoothed blink rate was significantly higher or lower (on the x axis).
+		</div>
+
+		<div class="content2">
+			Use drop down menu to select figure format (.jpg, .pdf, .eps, .fig, .png, or .tif).
+		</div>
+
+		<div class="content2">
+			<img src="../../static/figs/outputPlot.png" alt="blinkmod output">
+		</div>
+	</div>
+
+	<div class = "content1">
+		<b>.mat file</b> (BLINK_MOD.mat) - a MATLAB file containing a single struct ("results"), with the following fields:
+		<ul class="content2">
+			<li>smoothedBR – smoothed group blink rate in each sample (blinks/min)</li>
+			<li>decreasedBlinking – sample(s) in which group blink rate is significantly lower</li>
+			<li>increasedBlinking  – sample(s) in which group blink rate is significantly lower</li>
+			<li>lowPrctileLevel – low significance threshold </li>
+			<li>highPrctileLevel – high significance threshold</li>
+			<li>lowPrctile – low percentile of the permutation test for each sample</li>
+			<li>highPrctile – high percentile of the permutation test for each sample</li>
+			<li>optW – standard deviation of the Gaussian smoothing kernel</li>
+			<li>inputs – a struct with fields:
+				<ul>
+					<li>numIndividuals – number of individuals in the input</li>
+					<li>numFrames – number of samples in the input</li>
+					<li>numPerms – number of permutations </li>
+					<li>sampleRate – sample rate (Hz)</li>
+					<li>smoothType – method by which bandwidth of smoothing kernel was selected (sskernel)</li>
+				</ul>
+			</li>
+		</ul>
+	</div>
+
+</div>
+
+
+<div class="section-title">
+	<a name="run">Run Analysis</a>
+	<a href="#" class="to-top">[Back to the top]</a>
+</div>
+
+<div class="section-content">
+	<div class = "content1">
+		After specifying inputs and outputs, press "Run Analysis." Progress bars will show the status.
+	</div>
+
+	<div class = "content1">
+		A figure with the results of the analysis will appear in a separate window.
+	</div>
+
+</div>
+
+<div class="section-title">
+	<a name="trouble">Troubleshooting</a>
+	<a href="#" class="to-top">[Back to the top]</a>
+</div>
+
+<div class="section-content">
+	<div class = "content1">
+		[Link to error list]
+	</div>
+</div>
+
+
+{% endblock %}

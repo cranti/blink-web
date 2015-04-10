@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="page-title">
+	<h1>Peri-Stimulus Time Histogram</h1>
+	Assess a stimulus's power to engage a group of viewers
+</div>
+
+<br>
+<div class="section-list">
+	<a href="#prep">Prepare Data</a>
+	<a href="#inputs">Inputs and Settings</a>
+	<a href="#outputs">Outputs</a>
+	<a href="#run">Run Analysis</a>
+	<a href="#trouble">Troubleshooting</a>
+</div>
+
+
+ <figure>
+  	<img src="../../static/figs/blankGUI_psth.png" alt="blinkmod blank app">
+</figure> 
+
+
+<div class="section-title">
+	<a name="prep">Prepare Data</a>
+	<a href="#" class="to-top">[Back to the top]</a>
+</div>
+
+<div class="section-content">
+
+	<div class="content1">
+		To run this analysis, you need:
+			<ul class="content2">
+				<li>A set of participants who viewed a stimulus (or stimuli) with an event of interest</li>
+				<li>Data indicating when each participant blinked (<b>target events</b>)</li>
+				<li>Data indicating the occurrence of some event of interest while target data was collected (<b>reference events</b>)</li>
+			</ul>
+	</div>
+
+	<div class="content1">
+		Target and reference data must be saved in two csv files. There are two acceptable formats:
+
+		<ol class="content2">
+		
+			<li>
+				<b>One set per column</b>
+				<ul>
+					<li>Each column contains one set of target/reference events </li>
+					<li>Each row is a sample 
+						<ul>
+							<li>Data should be collected at a constant sample rate </li>
+						</ul>
+					</li>
+					<li>Data must be numeric and categorical
+						<ul>
+							<li>You will specify one <b>target value</b> and one <b>reference value</b> that indicate the occurrence of an event (across all participants).</li>
+							<li>NaN indicates <a href="#">lost data</a> (this is the only acceptable non-numeric value)</li>
+						</ul>
+					</li>
+				</ul>
+			</li>
+			<li>
+				<b>Three column format</b>
+				<ul>
+					<li>Each event appears in a separate row</li>
+					<li>Three columns (in the following order, no header row):
+						<ol>
+							<li><b>Set identifier</b> – unique to each target or reference set (numeric value)</li>
+							<li><b>Event start</b> – sample when event began (integer)</li>
+							<li><b>Event end</b> – sample when event ended (integer)</li>
+						</ol>
+					</li>
+					<li>If this format is selected, you need to specify the length of the data collected, in number of samples 
+						<ul>
+							<li>NB: for this input format, all sets are assumed to have the same number of samples.</li>
+						</ul>
+					</li>
+				</ul>
+			</li>
+		</ol>
+
+	</div>
+
+
+	<div class="content1">
+		Target and reference files <b>do not</b> need to be in the same format, but the event sets must match.
+			
+			<div class="content2">
+				There are two ways that target event sets can be paired to reference event sets:
+				<ol class="content2">
+					<li>A single set of reference events, which will be applied to all target sets</li>
+					<li>One reference set per target set (e.g. the target events in column 1 will be used with the reference events in column 1, etc.)</li>
+				</ol>
+			</div>
+
+			<div class="content2">
+				Corresponding target and reference sets must have the same number of samples.
+				<br>
+				<div style="font-style: italic; padding-top: 5px; padding-left: 20px">
+					e.g. If there is one set of reference events for all target sets, then all columns (in both files) must have the same number of rows
+				</div>
+			</div>
+	</div>
+
+	<div class="content1">
+		<a href="#">[DOWNLOAD EXAMPLE DATA SET (create toy data!)]</a>
+	</div>
+</div>
+
+
+<div class="section-title">
+	<a name="inputs">Inputs and Settings</a>
+	<a href="#" class="to-top">[Back to the top]</a>
+</div>
+<div class="section-content">
+	Inputs and Settings
+</div>
+
+
+<div class="section-title">
+	<a name="outputs">Outputs</a>
+	<a href="#" class="to-top">[Back to the top]</a>
+</div>
+<div class="section-content">
+	Outputs
+</div>
+
+
+<div class="section-title">
+	<a name="run">Run Analysis</a>
+	<a href="#" class="to-top">[Back to the top]</a>
+</div>
+
+<div class="section-content">
+	<div class = "content1">
+		After specifying inputs and outputs, press "Run Analysis." Progress bars will show the status.
+	</div>
+
+	<div class = "content1">
+		Figures with the results of the analysis will appear in a separate window.
+	</div>
+
+</div>
+
+
+<div class="section-title">
+	<a name="trouble">Troubleshooting</a>
+	<a href="#" class="to-top">[Back to the top]</a>
+</div>
+
+<div class="section-content">
+	<div class = "content1">
+		[Link to error list]
+	</div>
+</div>
+
+
+{% endblock %}

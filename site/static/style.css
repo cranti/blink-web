@@ -14,6 +14,7 @@ body {
     margin: 0 auto;
     background: #EEE;
     padding: 25px;
+    font-family: Arial;
 }
 
 #written-by {
@@ -63,7 +64,7 @@ nav {
     text-align: center;
 }
 
-ul {
+nav ul {
     margin: auto;
     padding-left: 0;
 }
@@ -114,10 +115,7 @@ ul {
 
 .dropdown .navlink a { color: white; }
 
-.navlink:hover .dropdown { display: block; }
-
-.dropdown:hover { display: block; }
-
+.navlink:hover .dropdown, .dropdown:hover  { display: block; }
 
 /*END OF BASE FORMAT */
 
@@ -190,3 +188,79 @@ input[type="submit"] {
     color: white;
     background: #1A584C;
 }
+
+/* HOW TO/HOW IT WORKS */
+
+.page-title {
+    text-align: center;
+    font-size: 18px;
+}
+
+.section-list {
+    text-align: center;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.section-list a {
+    display: inline-block;
+    margin-left: 10px;
+    margin-right: 10px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.section-title {
+    margin: 20px -25px 0 -25px;
+    padding: 10px 0px 10px 25px;
+    font-size: 30px;
+    font-weight: bold;
+    background: rgba(251, 167, 164, 0.3);
+}
+
+.to-top {
+    font-size: 11px;
+    color: #666;
+    padding-left: 10px;
+}
+
+.section-content {
+    display: block;
+    background: #DDD;
+}
+
+
+
+.content1 {
+    font-size: 19px;
+    padding: 15px 20px 10px 30px;
+}
+
+
+
+.content2 {
+    font-size: 16px;
+    padding: 10px 0px 0px 30px;
+    margin-top: 5px;
+    margin-bottom: 0px;
+}
+
+.content2 + .content2 {
+    padding-top: 15px;
+}
+
+ul.content2{
+    margin-top: 0px;
+}
+
+ol.content2 {
+    margin-top: 0px;
+    margin-left: 10px;
+}
+
+.content2 li {
+    padding-top: 3px;
+    /*padding-bottom: 3px;*/
+}
+
+

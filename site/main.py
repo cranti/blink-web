@@ -2,6 +2,7 @@
 # - Database stuff
 # - deployment
 #
+# - fix image links in the html docs
 
 # URL mappings
 # Home (/)
@@ -19,7 +20,7 @@ from contextlib import closing
 from flask import Flask, render_template, request, redirect, url_for
 
 
-import plot1
+# import plot1
 
 # create the app 
 app = Flask(__name__)
@@ -36,6 +37,8 @@ def url_to_html(analysis, page):
         return 'run-%s.html' % analysis
     elif page == 'results':
         return 'results-%s.html' % analysis
+    elif page == 'howto':
+        return 'howto-%s.html' % analysis
 
 
 ### db - TODO: look at this/edit (pulled from flask tutorial)
@@ -79,15 +82,19 @@ def home_page():
 def background(analysis):
     return render_template(url_to_html(analysis,'background'))
 
-#TODO - this will need the most work
-@app.route('/<analysis>/analyze/', methods = ['GET', 'POST'])
-def run_analysis(analysis):
-    if request.method == 'POST':
-        app.logger.debug(request.form['numPerms'])
-        plot_data = plot1.plot1()
-        return  render_template(url_to_html(analysis,'results'), plot_data=plot_data) # redirect(url_for('results',analysis=analysis))
-    else:
-        return render_template(url_to_html(analysis,'run'))
+@app.route('/<analysis>/howto/', methods = ['GET'])
+def howto(analysis):
+    return render_template(url_to_html(analysis,'howto'))
+
+# #TODO - this will need the most work
+# @app.route('/<analysis>/analyze/', methods = ['GET', 'POST'])
+# def run_analysis(analysis):
+#     if request.method == 'POST':
+#         app.logger.debug(request.form['numPerms'])
+#         plot_data = plot1.plot1()
+#         return  render_template(url_to_html(analysis,'results'), plot_data=plot_data) # redirect(url_for('results',analysis=analysis))
+#     else:
+#         return render_template(url_to_html(analysis,'run'))
 
 @app.route('/<analysis>/results/', methods = ['GET'])
 def results(analysis):

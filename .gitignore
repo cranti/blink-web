@@ -6,7 +6,5 @@ testing/
 config.py
 schema.sql
 *.DS_Store
-<<<<<<< HEAD
 *.fig
-=======
->>>>>>> 6d8a4f1c2064be5e1894acc6b61f59722e0adf46
+analysis/files/
