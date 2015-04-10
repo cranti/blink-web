@@ -63,7 +63,7 @@ try
     end
     
     legend(ax1, legendText);
-    title(ax1, {'Blink Rate Modulation',sprintf('Number of Permutations=%i',numPerms)});
+    title(ax1, {'Blink Rate Modulation',sprintf('%i Permutations',numPerms)});
     xlabel(ax1, 'Frame');
     ylabel(ax1, 'Blink Rate (blinks/min)');
 
@@ -81,7 +81,7 @@ end
 
 try
     if ~isempty(figFormat)
-        saveas(ax1,[prefix,'BLINK_MOD.%s',figFormat]);
+        saveas(ax1,[prefix,'BLINK_MOD.',figFormat]);
     end
 catch ME
     err = MException('BlinkGUI:plotting', 'Error saving blink modulation figures.');

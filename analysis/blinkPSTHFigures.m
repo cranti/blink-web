@@ -133,7 +133,7 @@ end
 try
     if ~isempty(figFormat)
         saveas(ax1,[prefix,'PSTH.',figFormat]);
-        saveas(ax2,[prefix,'PSTHminusMean.',figFormat]);
+        saveas(ax2,[prefix,'PSTHchangeFromMean.',figFormat]);
     end
 catch ME
     err = MException('BlinkGUI:plotting', 'Error saving PSTH figures.');

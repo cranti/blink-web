@@ -1,10 +1,10 @@
-% Callback function for blinkGUI.m
-%
-% Load blink data from a csv file to prepare for blink permutation testing
-%
-% gd is an instance of BlinkGuiData
-
 function cbLoadBlinks(~, ~, gd)
+%CBLOADBLINKS - Load blink data from a csv to prepare for blink permutation
+%testing (blinkPerm.m)
+%
+% - Callback function for blinkGUI.m
+% - gd is an instance of BlinkGuiData
+
     
     %% choose file dialog box: 
     [input_file, PathName] = uigetfile('*.csv','Choose a csv file with blink data');
@@ -14,7 +14,7 @@ function cbLoadBlinks(~, ~, gd)
     input_file_full = dirFileJoin(PathName, input_file);
 
     %% Dialog box: get file type before loading file
-    options = {'Binary blink data (1 subj./column)','BinaryMat';
+    options = {'One subject per column','BinaryMat';
                 'Three column format','3col'};
     [formatType, value] = radioDlg(options, 'Select Format of Blink Data');
     
@@ -70,7 +70,7 @@ function cbLoadBlinks(~, ~, gd)
         return
     end
     
-    plotTitle = {input_file, sprintf('Sample rate: %.2f',sampleRate)};
+    plotTitle = {input_file, sprintf('Sample rate: %s Hz',num2str(sampleRate))};
         
     %% save everything to GUIDATA
     gd.blinkPermInputs.sampleRate = sampleRate;
@@ -85,7 +85,7 @@ function cbLoadBlinks(~, ~, gd)
     catch ME
         err = MException('BlinkGUI:plotting','Error plotting instantaneous blink rate.');
         err = addCause(err, ME);
-        gui_error(ME, gd.guiSettings.error_log);
+        gui_error(err, gd.guiSettings.error_log);
     end
     
 end

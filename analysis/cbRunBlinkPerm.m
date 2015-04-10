@@ -18,6 +18,9 @@ numPerms = str2double(get(gd.handles.hNumPerms, 'String'));
 sigHigh = str2double(get(gd.handles.hSigHighPerm,'String'));
 sigLow = str2double(get(gd.handles.hSigLowPerm,'String'));
 
+% Smoothing type
+smoothType = gd.blinkPermInputs.smoothType; % not error checking here...
+
 % W range to try in sskernel
 Wrange = get(gd.handles.hWRange, 'String');
 
@@ -30,6 +33,7 @@ saveFigs = gd.output.saveFigs;
 outputDir = gd.output.dir;
 outputPrefix = get(gd.handles.hOutputFile,'String'); %TODO - there is currently no error checking here - remove /\. ?
 figFormat = gd.output.figFormat;
+input_file = gd.blinkPermInputs.filename;
 
 
 %% Check inputs
@@ -70,12 +74,15 @@ if ~isempty(error_msgs)
     return
 end
 
-% WARNING ABOUT OVERWRITING FILES
+
+%% Warnings - chance to opt out
+
+% OVERWRITING FILES
 % This should be updated if any of the file naming patterns change
 if saveMat || saveCsv || saveFigs
-    file1 = [outputPrefix, 'BLINK_MOD.', figFormat];
-    file2 = [outputPrefix, 'BLINK_MOD.mat'];
-    file3 = [outputPrefix, 'BLINK_MODsummary.csv'];
+    file1 = [dirFileJoin(outputDir,outputPrefix), 'BLINK_MOD.', figFormat];
+    file2 = [dirFileJoin(outputDir,outputPrefix), 'BLINK_MOD.mat'];
+    file3 = [dirFileJoin(outputDir,outputPrefix), 'BLINK_MODsummary.csv'];
 
     if exist(file1, 'file') || exist(file2, 'file') || exist(file3, 'file')
         [~, cont] = warndlgCancel({'Output files with this prefix exist in the selected output directory.', 'OK to overwrite?'}, 'Invalid Entry', 'modal', 1);
@@ -121,20 +128,24 @@ end
 % W RANGE
 %TODO - definitely need to check this
 if ~isempty(Wrange)
+    
     wWarning = 0; %boolean -- true if something goes wrong
+    
     Ws = strsplit(Wrange, ':');
-    Wvalues = [];
-    for i = 1:length(Ws)
-        [temp, status] = str2num(Ws{i});
-        if status==0 %not a number
-            wWarning = 1;
-            break
-        else
-            Wvalues(i) = temp;
-        end
-        if i>3 %too many values
-            wWarning = 1;
-            break
+    
+    %if there are more than 3 values, throw error:
+    if length(Ws) > 3
+        wWarning = 1;
+    else
+        Wvalues = zeros(1,length(Ws));
+        for i = 1:length(Ws)
+            [temp, status] = str2num(Ws{i});
+            if status==0 %not a number
+                wWarning = 1;
+                break
+            else
+                Wvalues(i) = temp;
+            end
         end
     end
     
@@ -148,7 +159,7 @@ if ~isempty(Wrange)
         set(gd.handles.hWRange, 'String', '');
         Wrange = [];
         
-        % Otherwise, set up W range
+    % Otherwise, set up W range
     elseif length(Wvalues)==1
         Wrange = Wvalues;
     elseif length(Wvalues)==2
@@ -177,6 +188,7 @@ try
     results = blinkPerm(numPerms, rawBlinks, sampleRate,...
         'lowPrctile', sigLow,...
         'highPrctile', sigHigh,...
+        'smoothType', smoothType,...
         'W', Wrange,...
         'hWaitBar', hWaitBar);
     
@@ -219,7 +231,7 @@ if saveCsv
     
     % output csv summary file
     try
-        blinkPermSummary(dirFilePrefix, results);
+        blinkPermSummary(dirFilePrefix, results, input_file);
     catch ME
         gui_error(ME, gd.guiSettings.error_log);
     end
@@ -246,6 +258,11 @@ end
 
 %% Delete progress bar, enable big buttons
 cleanUp(gd, hWaitBar)
+
+%% Warn user if low percentile is at floor
+if sum(results.lowPrctile > 0) == 0
+    warndlg('Lower percentile of permutation testing is at floor (0).');
+end
 
 end
 

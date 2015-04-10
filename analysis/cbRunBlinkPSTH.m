@@ -3,7 +3,7 @@ function cbRunBlinkPSTH(~, ~, gd)
 %
 %
 
-%% Get all of the variables we'll be using out of gd
+%% Get all of the variables we'll be using out of gd (except handles)
 
 %Target and reference events
 targetEvents = gd.blinkPsthInputs.targetEvents;
@@ -26,8 +26,12 @@ startFrame = gd.blinkPsthInputs.startFrame;
 % Include threshold
 inclThresh = str2double(get(gd.handles.hInclThreshEdit, 'String'));
 
-%Reference set lengths
-refSetLen = gd.blinkPsthInputs.refSetLen; %TODO - no error checking for this
+% Target and reference order
+targetOrder = gd.blinkPsthInputs.targetOrder;
+refOrder = gd.blinkPsthInputs.refOrder;
+
+%Reference set lengths (passed into blinkPSTH, matched to targetLens)
+refLens = gd.blinkPsthInputs.refLens; %no error checking for this
 
 % What to save
 saveMat = gd.output.saveMat;
@@ -39,20 +43,11 @@ outputDir = gd.output.dir;
 outputPrefix = get(gd.handles.hOutputFile,'String'); %TODO - there is currently no error checking here - remove /\. ?
 figFormat = gd.output.figFormat;
 
-%% Extra input specs for summary printing
-otherInputSpecs.refFilename = gd.blinkPsthInputs.refFilename;
-otherInputSpecs.refEventType = gd.blinkPsthInputs.refEventType;
-otherInputSpecs.refCode = gd.blinkPsthInputs.refCode;
-otherInputSpecs.refSetLen = gd.blinkPsthInputs.refSetLen;
+%GUI settings
+error_log = gd.guiSettings.error_log;
+maxPerms = gd.guiSettings.maxPerms;
 
-otherInputSpecs.targetFilename = gd.blinkPsthInputs.targetFilename;
-otherInputSpecs.targetEventType = gd.blinkPsthInputs.targetEventType;
-otherInputSpecs.targetCode = gd.blinkPsthInputs.targetCode;
-
-otherInputSpecs.numPerms = numPerms;
-
-%% Check normal settings
-
+%% Check inputs
 error_msgs = {};
 
 % TARGET EVENTS
@@ -79,8 +74,8 @@ end
 % NUMBER OF PERMUTATIONS
 if isnan(numPerms) || numPerms <= 0
     error_msgs{end+1} = '\tNumber of permutations must be a positive number.';
-elseif numPerms>gd.guiSettings.maxPerms
-    error_msgs{end+1} = sprintf('\tMaximum number of permutations= %i',gd.guiSettings.maxPerms);
+elseif numPerms>maxPerms
+    error_msgs{end+1} = sprintf('\tMaximum number of permutations= %i', maxPerms);
 else %make it an integer
     numPerms = int32(numPerms);
     set(gd.handles.hNumPermsPsth, 'String', numPerms);
@@ -103,12 +98,41 @@ if ~isempty(error_msgs)
     errordlg(sprintf(dlg_msg));
     return
 end
+
     
-% WARNING ABOUT OVERWRITING FILES
+%% Error checks: matching target and reference sets
+
+numTargets = length(targetEvents);
+numRefSets = length(refEvents);
+
+%TODO definitely check this
+%Make sure that all target identifiers have matching reference sets:
+if (numRefSets >= numTargets) && ~isempty(setdiff(targetOrder, refOrder)) %TODO get targetOrder and refOrder out
+    errordlg('1 or more target sets is not matched to a reference set (by ID)');
+    return
+end
+
+%TODO - remove ref sets that aren't in target events?? (by ID)
+%TODO - check this!
+if numRefSets > numTargets
+    
+    % find the index of refOrder #s that are also in targetOrder
+    [~, ~, iref] = intersect(targetOrder, refOrder);
+    
+    %limit refEvents and refOrder to these values
+    refEvents = refEvents(iref);
+    refOrder = refOrder(iref);
+    refLens = refLens(iref);
+end
+
+
+%% Warnings - chance to opt out
+
+% OVERWRITING FILES
 % This should be updated if any of the file naming patterns change
 if saveMat || saveCsv || saveFigs
     file1 = [dirFileJoin(outputDir,outputPrefix), 'PSTH.', figFormat];
-    file2 = [dirFileJoin(outputDir,outputPrefix), 'PSTHminusMean.', figFormat];
+    file2 = [dirFileJoin(outputDir,outputPrefix), 'PSTHchangeFromMean.', figFormat];
     file3 = [dirFileJoin(outputDir,outputPrefix), 'PSTH.mat'];
     file4 = [dirFileJoin(outputDir,outputPrefix), 'PSTHsummary.csv'];
 
@@ -117,6 +141,20 @@ if saveMat || saveCsv || saveFigs
         if ~cont
             return
         end
+    end
+end
+
+% Window size
+minTargSize = min(cellfun(@length, targetEvents));
+if (lagBefore+lagAfter+1)>minTargSize
+    [~, cont] =  warndlgCancel({'PSTH size is larger than one or more of target data sets', 'Press OK to continue with these values'}, 'Warning', 'modal', 1);
+    if ~cont
+        return
+    end
+elseif (lagBefore > minTargSize/2) || (lagAfter > minTargSize/2)
+    [~, cont] = warndlgCancel({'The window size before or after event may be too large relative to the length of your data.', 'Press OK to continue with these values'}, 'Warning', 'modal', 1);
+    if ~cont
+        return
     end
 end
 
@@ -192,6 +230,21 @@ if isnan(inclThresh) || inclThresh <0 || inclThresh>1
     inclThresh = .2;
 end
 
+
+
+%% Extra input specs for summary printing
+otherInputSpecs.refFilename = gd.blinkPsthInputs.refFilename;
+otherInputSpecs.refEventType = gd.blinkPsthInputs.refEventType;
+otherInputSpecs.refCode = gd.blinkPsthInputs.refCode;
+otherInputSpecs.refOrder = refOrder; %pulled out for matching
+otherInputSpecs.refLens = refLens; %pulled out for matching
+
+otherInputSpecs.targetFilename = gd.blinkPsthInputs.targetFilename;
+otherInputSpecs.targetEventType = gd.blinkPsthInputs.targetEventType;
+otherInputSpecs.targetCode = gd.blinkPsthInputs.targetCode;
+otherInputSpecs.targetOrder = targetOrder; %pulled out for matching
+
+
 %% Create a waitbar to update user with progress
 hWaitBar = waitbar(0, '', ...
     'Name','PSTH',...
@@ -207,12 +260,12 @@ toggleBigButtons(gd.handles, 'disable');
 %% run the analysis
 
 try
-    results = blinkPSTH(refEvents, gd.blinkPsthInputs.targetEvents, lagSize, numPerms,...
+    results = blinkPSTH(refEvents, targetEvents, lagSize, numPerms,...
         'startFrame', startFrame,...
         'inclThresh', inclThresh,...
         'lowPrctile', sigLow,...
         'highPrctile', sigHigh,...
-        'refSetLen', refSetLen,...
+        'refLens', refLens,...
         'hWaitBar', hWaitBar);
     
 catch ME
@@ -270,20 +323,32 @@ end
 
 %% save mat file
 if saveMat
-    
-    % save .mat file in the outputDir
+
     try
+        %add the other input specs to the results struct to be saved
+        results.inputs.refLens = otherInputSpecs.refLens;
+        
+        results.inputs.targetOrder = otherInputSpecs.targetOrder;
+        results.inputs.refOrder = otherInputSpecs.refOrder;
+        
+        results.inputs.targetEventType = otherInputSpecs.targetEventType;
+        results.inputs.targetCode = otherInputSpecs.targetCode;
+        results.inputs.refEventType = otherInputSpecs.refEventType;
+        results.inputs.refCode = otherInputSpecs.refCode;
+        
+        results.inputs.targetFilename = otherInputSpecs.targetFilename;
+        results.inputs.refFilename = otherInputSpecs.refFilename;
+        
         % full path for a mat file:
         matfile_name = sprintf('%sPSTH.mat', dirFilePrefix);
         
-        %put the other input specs into results, so that they get saved
-        results.otherInputSpecs = otherInputSpecs;
-        
+        % save the results struct
         save(matfile_name, 'results');
+        
     catch ME
         err = MException('BlinkGUI:output','Error saving PSTH mat file.');
         err = addCause(err, ME);
-        gui_error(err, gd.guiSettings.error_log);
+        gui_error(err, error_log);
     end
     
     thingsSaved = thingsSaved + 1;
@@ -295,7 +360,8 @@ cleanUp(gd, hWaitBar)
 
 end
 
-%TODO - use this format in other functions with waitbars
+
+% Deal with the wait bar, re-enable the big buttons
 function cleanUp(gd, hWaitBar)
     delete(hWaitBar);
     gd.setWaitBar([]);

@@ -1,10 +1,9 @@
 function cbLoadTargetData(~, ~, gd)
-% Callback function for blinkGUI.m
+%CBLOADTARGETDATA - Load target data for blink PSTH analysis (blinkPSTH.m).
 %
-% Load target data for blink PSTH analysis
+% - Callback function for blinkGUI.m
+% - gd is an instance of BlinkGuiData
 
-% Carolyn Ranti
-% 3.18.2015
 
 %% Choose a file
 [input_file, PathName] = uigetfile('*.csv','Choose a csv file with target data');
@@ -15,7 +14,7 @@ input_file_full = dirFileJoin(PathName, input_file);
 
 
 %% Dialog box: get file type before loading file
-options = {'1 set per column','SetPerCol';
+options = {'One set per column','SetPerCol';
     'Three column format','3col'};
 [formatType, value] = radioDlg(options, 'Select Format of Target Data');
 
@@ -76,7 +75,7 @@ if strcmpi(formatType, 'SetPerCol')
     
     %% Actually read in the data/convert it
     try
-        rawTargetData = readInPsthEvents(input_file_full, 'SetPerCol', hWaitBar);
+        [rawTargetData, targetOrder] = readInPsthEvents(input_file_full, 'SetPerCol', hWaitBar);
         
         %if the user canceled
         if isempty(rawTargetData)
@@ -102,7 +101,7 @@ elseif strcmpi(formatType, '3col')
     prompt = {'How long are the target sets?'};
     dlg_title = '3 Column Format';
     num_lines = 1;
-    answer = inputdlg(prompt,dlg_title, num_lines);
+    answer = inputdlg(prompt, dlg_title, num_lines);
     
     %if user cancels or doesn't enter anything
     if isempty(answer)
@@ -129,7 +128,7 @@ elseif strcmpi(formatType, '3col')
     
     %% Actually read in data
     try
-        rawTargetData = readInPsthEvents(input_file_full, '3col', sampleLen);
+        [rawTargetData, targetOrder] = readInPsthEvents(input_file_full, '3col', sampleLen);
         targetEvents = getTargetEvents(rawTargetData, 1, targetEventType);
     catch ME
         gui_error(ME, gd.guiSettings.error_log);
@@ -143,14 +142,21 @@ end
 
 %% Save things to GUIDATA
 gd.blinkPsthInputs.targetEvents = targetEvents;
+gd.blinkPsthInputs.targetOrder = targetOrder;
 gd.blinkPsthInputs.targetCode = targetCode;
 gd.blinkPsthInputs.targetEventType = targetEventType;
 gd.blinkPsthInputs.targetFilename = input_file_full;
 gd.blinkPsthInputs.targetTitle = targetTitle;
 
 %% Plot both target data AND reference data
-cla(gd.handles.hPlotAxes, 'reset');
-plotTargetAndRef(gd.blinkPsthInputs, gd.handles.hPlotAxes);
+try
+    cla(gd.handles.hPlotAxes, 'reset');
+    plotTargetAndRef(gd.blinkPsthInputs, gd.handles.hPlotAxes);
+catch ME
+    err = MException('BlinkGUI:plotting','Error plotting target/reference events.');
+    err = addCause(err, ME);
+    gui_error(err, gd.guiSettings.error_log);
+end
 
 end
 

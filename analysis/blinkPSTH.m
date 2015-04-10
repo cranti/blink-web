@@ -32,14 +32,12 @@ function results = blinkPSTH(refEvents, targetEvents, lagSize, numPerms, varargi
 %                   (used in permutation testing). Default is 2.5
 %   'highPrctile'   High percentile to test for significantly higher blinking
 %                   (used in permutation testing). Default is 97.5
-%   'refSetLen'     Numeric vector containing the original length of each 
+%   'refLens'       Numeric vector containing the original length of each 
 %                   reference event set. This is a variable output by
 %                   GETREFEVENTS. If this parameter is passed in, it's used
 %                   for error checking only: the script verifies that the
 %                   length of each of the targetEvent sets matches the
-%                   length reported by 
-%                   If this is passed in, it's just used for error
-%                   checking: 
+%                   length reported by TODO
 %   'hWaitBar'      Handle to a waitbar to update user with progress
 %
 %
@@ -81,31 +79,36 @@ function results = blinkPSTH(refEvents, targetEvents, lagSize, numPerms, varargi
 %               permutation test
 %       * If permutation testing is not run, this is an empty struct.
 %       
-%       inputSpecs - struct with details about the inputs provided
+%       inputs - struct with details about the inputs provided
 %           lagSize - size of the window on either side of the event
-%           numTargets - number of entries in targetEvents
-%           numRefSets - number of entries in refEvents
-%           targetLens - length of each entry in targetEvents
-%           refLens - length of each entry in refEvents
-%           inclThresh - threshold for including a segment of target data
 %           startFrame - frame to start including reference and target
 %               events
+%           inclThresh - threshold for including a segment of target data
+%           numTargets - number of target event sets TODO - change everywhere to numTargetSets 
+%           numRefSets - number of reference event sets
+%           targetLens - number of samples in each target event set
+%           refLens - number of samples in each reference event set. If the
+%               optional input (refLens) isn't passed in, this is an empty
+%               matrix.
 %
 % SEE ALSO: GETREFEVENTS, GETTARGETEVENTS, BLINKPSTHSUMMARY, BLINKPSTHFIGURES
 
 % Written by Carolyn Ranti
-% 3.19.2015
+% 4.9.2015
 % Adapted from code written by Jenn Moriuchi, Grace Ann Marrinan, and Sarah Shultz
 
 %% Set up
 
+% Check type of inputs (switched formats from old code)
 assert(iscell(targetEvents), 'targetEvents must be a cell.');
 assert(iscell(refEvents), 'refEvents must be a cell.');
 
+%
 numTargets = length(targetEvents);
 numRefSets = length(refEvents);
 allDataLens = cellfun(@length, targetEvents);
 
+%Check the number of ref sets (should be either 1 OR 1 per target set)
 if numRefSets > 1 && numRefSets ~= numTargets
     error('If more than one reference set is provided, there must be exactly one per individual.')
 end
@@ -132,6 +135,7 @@ startFrame = 1;
 inclThresh = .2; 
 lowPrctileLevel = 2.5; 
 highPrctileLevel = 97.5;
+refLens = [];
 
 for v = 1:2:length(varargin)
    switch lower(varargin{v})
@@ -155,21 +159,21 @@ for v = 1:2:length(varargin)
            if ~isnumeric(highPrctileLevel) || ~isscalar(highPrctileLevel) || highPrctileLevel<0 || highPrctileLevel>100
                error('highPrctile must be a numeric value between 0 and 100');
            end
-       case 'refsetlen'
-           refSetLen = varargin{v+1};
-           if ~isnumeric(refSetLen)
+       case 'reflens'
+           refLens = varargin{v+1};
+           if ~isnumeric(refLens)
                error('refSetLen must be numeric');
            end
            
-           if length(refSetLen) == 1
-               if ~sum(allDataLens == refSetLen)
+           if length(refLens) == 1
+               if ~sum(allDataLens == refLens)
                   error('Mismatch between length of target event sets and length of reference event set.');
                end 
-           elseif length(refSetLen) == numRefSets
-               if (isrow(refSetLen) && ~isrow(allDataLens)) || (~isrow(refSetLen) && isrow(allDataLens))
-                   refSetLen = refSetLen';
+           elseif length(refLens) == numRefSets
+               if (isrow(refLens) && ~isrow(allDataLens)) || (~isrow(refLens) && isrow(allDataLens))
+                   refLens = refLens';
                end
-               if ~isequal(allDataLens, refSetLen)
+               if ~isequal(allDataLens, refLens)
                   error('Mismatch between length of target event sets and length of reference event sets.');
                end
            else
@@ -192,6 +196,7 @@ if haswaitbar
     waitbar(0, hWaitBar, 'Creating PSTH...');
 end
 
+% Make PSTH 
 results = makePSTH(refEvents, targetEvents, lagSize, startFrame, inclThresh, 0);
 
 %have it take at least 1/2 second (for message to be visible in waitbar)
@@ -245,7 +250,7 @@ if runPermTest
     results.permTest.highPrctileLevel = highPrctileLevel;
     results.permTest.lowPrctile = prctile(permResults, lowPrctileLevel, 1);
     results.permTest.highPrctile = prctile(permResults, highPrctileLevel, 1);
-    results.permTest.mean = mean(permResults);
+    results.permTest.mean = mean(permResults, 1);
     
     if haswaitbar
         while toc(tstart) < .5; end 
@@ -261,14 +266,15 @@ else
     results.permTest.mean = [];
 end
 
-%% Add input specs
-results.inputSpecs.lagSize = lagSize;
-results.inputSpecs.numTargets = numTargets;
-results.inputSpecs.numRefSets = numRefSets;
-results.inputSpecs.targetLens = cellfun(@length, targetEvents);
-results.inputSpecs.refLens = cellfun(@length, refEvents);
-results.inputSpecs.inclThresh = inclThresh;
-results.inputSpecs.startFrame = startFrame;
+%% Add info about inputs
+results.inputs.lagSize = lagSize;
+results.inputs.startFrame = startFrame;
+results.inputs.inclThresh = inclThresh;
+results.inputs.numTargets = numTargets;
+results.inputs.numRefSets = numRefSets;
+results.inputs.targetLens = cellfun(@length, targetEvents);
+results.inputs.refLens = refLens;
+
 end
 
 
@@ -298,7 +304,7 @@ function results = makePSTH(refEvents, targetEvents, lagSize, startFrame, inclTh
     % initialized indivPSTH with NaNs
     indivPSTH = nan(numIndivs, windowSize);
 
-    % Loop through target group participants
+    %% Loop through target group participants
     for targ = 1:numIndivs 
 
         % get the target-specific reference set, if applicable.

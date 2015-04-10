@@ -1,4 +1,4 @@
-function [psthEvents, subjOrder] = readInPsthEvents(filename, formatType, varargin)
+function [psthEvents, setOrder] = readInPsthEvents(filename, formatType, varargin)
 %READINREFEVENTS Read in a csv w/ target or reference events for blinkPSTH
 % 
 % USAGE
@@ -25,9 +25,9 @@ function [psthEvents, subjOrder] = readInPsthEvents(filename, formatType, vararg
 % OUTPUT
 %   psthEvents  Cell vector. Each entry is a numeric row vector 
 %               corresponding to a set of PSTH events in the input file.
-% 	subjOrder 	order of targets/references. This is only relevant if the 
+% 	setOrder 	order of targets/references. This is most relevant if the 
 %               data is in the 3 column format, with identifiers in the 1st
-%               column. Order is preserved from input.
+%               column. Sets are sorted by ID number (ascending).
 %
 % --- Details on formatType options ---
 % 'SetPerCol'
@@ -43,7 +43,7 @@ function [psthEvents, subjOrder] = readInPsthEvents(filename, formatType, vararg
 %   subject identifier (numeric value), the 2nd column contains the start
 %   frame of the blink (integer value), and the 3rd column contains the end
 %   frame of the blink (integer value). The number of columns in the output
-%   is determined by the input variable sampleLen.
+%   is determined by the input variable sampleLen. 
 %
 % ---------
 % NOTE: Because the conversion process is fairly computationally demanding,
@@ -89,13 +89,20 @@ if strcmpi(formatType, '3col')
     
     % convert to cell
     try
-        [psthEvents, subjOrder] = blink3ColConvert(events3col, sampleLen, 1); %last parameter: read in as cell
-        return
+        [psthEvents, setOrder] = blink3ColConvert(events3col, sampleLen, 1); %last parameter: read in as cell
+        
+        %REORDER - sort the set identifiers (setOrder), and then use that
+        %to reorder the psthEvents --> this is to allow for matching
+        %between refSets and targetSets...
+        [setOrder, I] = sort(setOrder);
+        psthEvents = psthEvents(I,:);
     catch ME
         err = MException('BlinkGUI:fileIn',sprintf('Error converting 3 column formatted file %s',filename));
         err = addCause(err,ME);
         throw(err);
     end
+    
+    return
 end
 
 %% Read in matrix file - each column contains a set of PSTH data
@@ -129,7 +136,7 @@ try
     numSets = length(c);
     
     % for output
-    subjOrder = 1:numSets;
+    setOrder = 1:numSets;
     
     %% initialize vars for loop
     
@@ -161,7 +168,7 @@ try
 
         
         %% update set lengths
-        doneSets = isinf(events);
+        doneSets = isinf(paddedEvents);
         alreadyDone = (setLens>0);
         
         % if a set was "done" in one row and in the next it's not, that

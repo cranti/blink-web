@@ -1,7 +1,6 @@
 function [results] = blinkPerm(numPerms, rawBlinks, sampleRate, varargin) 
 %BLINKPERM Find moments when a group is blinking significantly more or less
 %
-%
 % INPUT:
 %   numPerms    Number of permutations to run for the statistical test
 %   rawBlinks   n x f matrix (n = subjects, f = frames) with binary blink
@@ -9,6 +8,9 @@ function [results] = blinkPerm(numPerms, rawBlinks, sampleRate, varargin)
 %   sampleRate  Sample rate (in Hz) 
 %
 % Optional name/value parameters
+%   'smoothType'    'sskernel' (default). Bandwidth of the Gaussian kernel
+%                   is optimized (see also 'W'). Currently no other options
+%                   for smoothType - leaving this for future versions
 %   'W'             Bandwidth (standard deviation) for Gauss density
 %                   function used to smooth data. This can be a single 
 %                   value or a vector of values that will be tested.
@@ -69,6 +71,7 @@ function [results] = blinkPerm(numPerms, rawBlinks, sampleRate, varargin)
 assert(mod(length(varargin),2)==0, 'Error - odd number of optional parameters (must be name, value pairs)');
 
 %defaults
+smoothType = 'sskernel';
 W = [];
 lowPrctileLevel = 2.5; 
 highPrctileLevel = 97.5;
@@ -77,6 +80,9 @@ haswaitbar = 0;
 
 for v = 1:2:length(varargin)
    switch lower(varargin{v})
+       case 'smoothtype' %NOTE/TODO: currently, there is only one option for smoothing data (sskernel). Leaving this syntax in here for future edits
+           smoothType = varargin{v+1};
+           assert(sum(strcmpi(smoothType, {'sskernel'}))==1, 'smoothType must be sskernel');
        case 'w'
            W = varargin{v+1};
            assert(isnumeric(W) || isempty(W), 'W must be empty or a numeric array');
@@ -111,16 +117,17 @@ if haswaitbar
 end
 
 % gaussian window to convolve with data
-[Y,optW] = convWindow(fractBlinks, W, hWaitBar); 
+[Y,optW] = convWindow(fractBlinks, smoothType, W, hWaitBar); 
 
 %smooth data
 smoothedBR = smoothBlinkRate(fractBlinks, sampleRate, Y);
 
 %have it take at least 1/2 second (for message to be visible in waitbar)
 if haswaitbar
-    while toc(tstart) < .5; end 
     waitbar(1, hWaitBar);
+    while toc(tstart) < .5; end 
 end
+
 
 %% Permutations
 dataLen = length(fractBlinks);
@@ -187,13 +194,13 @@ results.lowPrctile = lowPrctile;
 results.highPrctile = highPrctile;
 results.optW = optW;
 
-%inputs:
+%info about inputs:
 results.inputs = struct();
 results.inputs.numIndividuals = numPpl;
 results.inputs.numFrames = dataLen;
 results.inputs.numPerms = numPerms;
 results.inputs.sampleRate = sampleRate;
-
+results.inputs.smoothType = smoothType;
 
 if haswaitbar
     while toc(tstart) < .5; end 

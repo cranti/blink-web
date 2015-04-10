@@ -3,7 +3,6 @@ classdef GuiSettings < handle
 %
 % See also: BLINKGUIDATA BLINKGUI
 
-% Very little error checking
     
     properties
         maxPerms;
@@ -14,12 +13,16 @@ classdef GuiSettings < handle
     methods
         
         %constructor
-        function obj = GuiSettings(obj)
+        function obj = GuiSettings()
             obj.maxPerms = 10000;
-            obj.error_log = '/Users/etl/Desktop/GitCode/blink-web/analysis/testing/blinkGUI_log.txt';
+            obj.error_log = sprintf('files/%s_BlinkAnalysesLOG.txt',datestr(now,'yyyy-mm'));
+            
+            %TODO - read in preferences file OR defaults if it doesn't
+            %exist
+            
         end
         
-        function obj = set.maxPerms(obj, value)
+        function set.maxPerms(obj, value)
             if ~isnumeric(value) || ~isscalar(value) || value < 0
                 error('Maximum permutations must be a positive number');
             end

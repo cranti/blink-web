@@ -1,10 +1,27 @@
 function cbLoadRefData(~, ~, gd)
-% Callback function for blinkGUI.m
+%CBLOADREFDATA - Load reference data for blink PSTH analysis
+% (blinkPSTH.m).
 %
-% Load reference data for blink PSTH analysis
+% - Callback function for blinkGUI.m
+% - gd is an instance of BlinkGuiData
 
-% Carolyn Ranti
-% 3.18.2015
+%% Get start frame from advanced options
+startFrame = str2double(get(gd.handles.hStartFrameEdit, 'String'));
+if isnan(startFrame) || startFrame <=0
+    [~, ok] = warndlgCancel({'Invalid start frame - must be a positive integer.','Press OK to use default (1).'},'Invalid entry','modal', 1);
+    if ~ok
+        return
+    end
+    startFrame = 1;
+else
+    startFrame = int32(startFrame);
+end
+
+set(gd.handles.hStartFrameEdit,'String',startFrame);
+%NOTE: this is when startFrame is set in gd.blinkPsthInputs -- if the
+%user changes it between loading reference data and running the
+%analysis, it is switched back to this value for consistency
+gd.blinkPsthInputs.startFrame = startFrame;
 
 %% Choose a file
 [input_file, PathName] = uigetfile('*.csv','Choose a csv file with reference data');
@@ -13,8 +30,9 @@ if input_file == 0
 end
 input_file_full = dirFileJoin(PathName, input_file);
 
+
 %% Dialog box: get file type before loading file
-options = {'1 set per column','SetPerCol';
+options = {'One set per column','SetPerCol';
     'Three column format','3col'};
 [formatType, value] = radioDlg(options, 'Select Format of Reference Data');
 
@@ -22,6 +40,8 @@ options = {'1 set per column','SetPerCol';
 if ~value
     return
 end
+
+
 
 if strcmpi(formatType, 'SetPerCol')
     %% Get reference code
@@ -56,25 +76,6 @@ if strcmpi(formatType, 'SetPerCol')
     end
     
     
-    %% Get start frame from advanced options
-    startFrame = str2double(get(gd.handles.hStartFrameEdit, 'String'));
-    if isnan(startFrame) || startFrame <=0
-        [~, ok] = warndlgCancel({'Invalid start frame - must be a positive integer.','Press OK to use default (1).'},'Invalid entry','modal', 1);
-        if ~ok
-            return
-        end
-        startFrame = 1;
-    else
-        startFrame = int32(startFrame);
-    end
-    
-    set(gd.handles.hStartFrameEdit,'String',startFrame);
-    %NOTE: this is when startFrame is set in gd.blinkPsthInputs -- if the
-    %user changes it between loading reference data and running the
-    %analysis, it is switched back to this value for consistency
-    gd.blinkPsthInputs.startFrame = startFrame;
-    
-    
     %% Create a waitbar to let user know that something is happening
 
     hWaitBar = waitbar(0, 'Reading in data...',...
@@ -96,7 +97,7 @@ if strcmpi(formatType, 'SetPerCol')
     %% Actually read in the data and convert it
     
     try
-        rawRefData = readInPsthEvents(input_file_full, 'SetPerCol', hWaitBar);
+        [rawRefData, refOrder] = readInPsthEvents(input_file_full, 'SetPerCol', hWaitBar);
         
         %if the user canceled
         if isempty(rawRefData)
@@ -104,7 +105,7 @@ if strcmpi(formatType, 'SetPerCol')
             return
         end
         
-        [refEvents, refSetLen] = getRefEvents(rawRefData, refCode, refEventType, gd.blinkPsthInputs.startFrame);
+        [refEvents, refLens] = getRefEvents(rawRefData, refCode, refEventType, gd.blinkPsthInputs.startFrame);
         
     catch ME
         cleanUp(gd, hWaitBar, tstart);
@@ -150,8 +151,8 @@ elseif strcmpi(formatType, '3col')
     
     %% Actually read in data
     try
-        rawRefData = readInPsthEvents(input_file_full, '3col', sampleLen);
-        [refEvents, refSetLen] = getRefEvents(rawRefData, 1, refEventType);
+        [rawRefData, refOrder] = readInPsthEvents(input_file_full, '3col', sampleLen);
+        [refEvents, refLens] = getRefEvents(rawRefData, 1, refEventType, gd.blinkPsthInputs.startFrame);
     catch ME
         gui_error(ME, gd.guiSettings.error_log);
         return
@@ -163,16 +164,23 @@ elseif strcmpi(formatType, '3col')
 end
 
 %% Save things to GUIDATA
+gd.blinkPsthInputs.refLens = refLens;
 gd.blinkPsthInputs.refEvents = refEvents;
+gd.blinkPsthInputs.refOrder = refOrder;
 gd.blinkPsthInputs.refCode = refCode;
 gd.blinkPsthInputs.refEventType = refEventType;
-gd.blinkPsthInputs.refSetLen = refSetLen;
 gd.blinkPsthInputs.refFilename = input_file_full;
 gd.blinkPsthInputs.refTitle = refTitle;
 
 %% Plot both target data AND reference data
-cla(gd.handles.hPlotAxes, 'reset');
-plotTargetAndRef(gd.blinkPsthInputs, gd.handles.hPlotAxes);
+try
+    cla(gd.handles.hPlotAxes, 'reset');
+    plotTargetAndRef(gd.blinkPsthInputs, gd.handles.hPlotAxes);
+catch ME
+    err = MException('BlinkGUI:plotting','Error plotting target/reference events.');
+    err = addCause(err, ME);
+    gui_error(err, gd.guiSettings.error_log);
+end
 
 end
 

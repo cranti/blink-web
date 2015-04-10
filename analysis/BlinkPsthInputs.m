@@ -6,27 +6,41 @@ classdef BlinkPsthInputs < handle
 % Very little error checking
    
     properties
-        targetEvents = {};
-        refEvents = {};
+        
+        %% General Settings
         startFrame = 1;
         
-        % target/ref event information:
-        targetCode = [];
-        targetEventType = '';
-        targetFilename = '';
+        %% Target Events
+        targetEvents = {}; % Target event sets
+        targetOrder = []; %maps target IDs to order of items in targetEvents
         
-        refCode = [];
-        refEventType = '';
-        refSetLen = []; %length of original reference sets (used for error checking)
-        refFilename = '';
+        targetCode = []; %value used to identify occurrence of target
+        targetEventType = ''; %allFrames, firstFrameOnly, etc
         
-        %title text for plotting
+        targetFilename = ''; %loaded file
+        
+        %% Reference Events
+        refEvents = {}; % Reference event sets
+        refOrder = []; %maps reference IDs to order of items in refEvents
+        refLens = []; %samples in original reference sets (used for error checking)
+        
+        refCode = []; %value used to identify occurrence of reference 
+        refEventType = ''; %allFrames, firstFrameOnly, etc
+        
+        refFilename = ''; %loaded file
+        
+        %% Plotting
+        
+        % Title text
         targetTitle = ''; 
         refTitle = '';
+        
+        % Sort order (original, ascend, descend)
+        plotSort = 'original'; 
     end
     
     methods
-        function obj = set.startFrame(obj, value)
+        function set.startFrame(obj, value)
             if ~isnumeric(value) || ~isscalar(value) || value < 0
                 error('Start frame must be a positive number');
             end

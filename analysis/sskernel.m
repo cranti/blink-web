@@ -1,5 +1,5 @@
 function [optW, C, W] = sskernel(x, W, hWaitBar)
-
+%SSKERNEL
 %
 % Function `sskernel' returns optimal bandwidth (standard deviation) 
 % of the Gauss density function used in kernel density estimation.

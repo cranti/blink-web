@@ -18,13 +18,13 @@ if outputDir % if user presses cancel, outputDir = 0
         'FontAngle','normal');
     
     % If the extent of the directory string is greater than the size of
-    % the text box, limit it to 40 characters.
+    % the text box, limit it to 50 characters.
     % (FFIX - this is a little hacky)
     ex = get(gd.handles.hListOutputFile, 'Extent');
     pos = get(gd.handles.hListOutputFile, 'Position');
     
     if ex(3) > pos(3)
-        set(gd.handles.hListOutputFile, 'String', ['...', outputDir((end-40):end)]);
+        set(gd.handles.hListOutputFile, 'String', ['...', outputDir((end-50):end)]);
     end
     
 end
