@@ -12,7 +12,7 @@ function plotTargetAndRef(blinkPsthInputs, axesH, varargin)
 % > This only works when target and reference events are 1s and 0s (and
 % NaNs) 
 % > The overall min/max values for things are hard coded - must match
-% scrolling script
+% scrolling script (cbScrollPsth.m)
 
 %%
 try
@@ -29,15 +29,9 @@ try
     refEvents = blinkPsthInputs.refEvents;
     refLens = blinkPsthInputs.refLens; %for figuring out xlim
     
-    % Initialize things for title text
-    titleText = {};
-    targetTitle = blinkPsthInputs.targetTitle;
-    refTitle = blinkPsthInputs.refTitle;
 
-    % Keep track of whether we actually plotted anything
-    plottedThings = 0;
     
-    %% Parse out varargin
+    %% Parse varargin
     
     %get maximum size of target events and maximum reference event:
     if ~isempty(targetEvents)
@@ -73,13 +67,25 @@ try
                 end
             case 'yrange'
                 minY = min(varargin{v+1});
-                minY = max(minY,.5);
+                minY = max(minY, .5);
                 
                 maxY = max(varargin{v+1});
-                %TODO - make this all match (in Xs and maxY)
+                maxY = max(maxY, dataMaxY);
+                % Note: limit min/max Y to what is possible for the data,
+                % because these values are used to index into arrays (more
+                % issue prone than just not plotting anything, for the Xs)     
         end
     end
 
+    %% Get ready to plot
+    
+    % Initialize things for title text
+    titleText = {};
+    targetTitle = blinkPsthInputs.targetTitle;
+    refTitle = blinkPsthInputs.refTitle;
+
+    % Keep track of whether we actually plotted anything
+    plottedThings = 0;
     
     %% Plot target events
     if ~isempty(targetEvents)
@@ -90,7 +96,7 @@ try
         switch lower(sortby)
             case 'original'
                 tOrder = 1:length(targetEvents);
-            case 'descend' %"descending" --> i actually want 
+            case 'descend' %highest density of events in lower rows
                 numEvents = cellfun(@nansum, targetEvents);
                 [~, tOrder] = sort(numEvents, 'descend');
             case 'ascend'

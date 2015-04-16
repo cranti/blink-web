@@ -1,12 +1,13 @@
+function cbChooseFigFormat(hObj, ~, gd)
 % Callback function for blinkGUI.m
 % Choose figure format from dropdown menu
 %
 % gd is an instance of BlinkGuiData
+%
+% Get list of figure formats from blinkGUI.m 
 
-
-function cbChooseFigFormat(hObj, ~, gd)
+try
     %'jpg|pdf|eps|fig|png|tif'
-    
     switch get(hObj, 'Value')
         case 1
             figf = 'jpg';
@@ -26,4 +27,12 @@ function cbChooseFigFormat(hObj, ~, gd)
     
     %save fig format in guidata
     gd.output.figFormat = figf;
+    
+catch ME % Catch and log any errors that weren't dealt with
+    err = MException('BlinkGUI:unknown', 'Unknown error');
+    err = addCause(err, ME);
+    gui_error(err, gd.guiSettings.error_log);
+    return
+end
+
 end

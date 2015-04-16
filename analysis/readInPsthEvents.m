@@ -24,7 +24,9 @@ function [psthEvents, setOrder] = readInPsthEvents(filename, formatType, varargi
 %   
 % OUTPUT
 %   psthEvents  Cell vector. Each entry is a numeric row vector 
-%               corresponding to a set of PSTH events in the input file.
+%               corresponding to a set of events in the input file. If it's
+%               in 3 column format, 1 indicates the occurrence of an event.
+%               Otherwise, the values are unchanged from the input file.
 % 	setOrder 	order of targets/references. This is most relevant if the 
 %               data is in the 3 column format, with identifiers in the 1st
 %               column. Sets are sorted by ID number (ascending).
@@ -49,6 +51,7 @@ function [psthEvents, setOrder] = readInPsthEvents(filename, formatType, varargi
 % NOTE: Because the conversion process is fairly computationally demanding,
 % it may take a while to read in files with many rows. 
 %
+% See also: GETTARGETEVENTS GETREFEVENTS
 
 % Written by Carolyn Ranti
 % 3.19.2015
@@ -91,11 +94,12 @@ if strcmpi(formatType, '3col')
     try
         [psthEvents, setOrder] = blink3ColConvert(events3col, sampleLen, 1); %last parameter: read in as cell
         
-        %REORDER - sort the set identifiers (setOrder), and then use that
-        %to reorder the psthEvents --> this is to allow for matching
-        %between refSets and targetSets...
+        %Reorder the data: sort the set identifiers (setOrder), and use
+        %that order to sort psthEvents --> this is to allow for matching
+        %between refSets and targetSets
         [setOrder, I] = sort(setOrder);
         psthEvents = psthEvents(I,:);
+        
     catch ME
         err = MException('BlinkGUI:fileIn',sprintf('Error converting 3 column formatted file %s',filename));
         err = addCause(err,ME);
@@ -104,6 +108,7 @@ if strcmpi(formatType, '3col')
     
     return
 end
+
 
 %% Read in matrix file - each column contains a set of PSTH data
 try 
@@ -118,6 +123,7 @@ catch ME
     throw(err);
 end
 
+%Convert the data:
 try
     %update user
     if haswaitdlg

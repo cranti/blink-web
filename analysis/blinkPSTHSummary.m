@@ -9,7 +9,7 @@ function blinkPSTHSummary(prefix, results, otherInputSpecs)
 %   otherInputSpecs Struct with information about the way that target and
 %                   reference data were identified. Fields that will be
 %                   printed (if they exist) are: refEventType, refCode,
-%                   refSetLen, targetEventType, and targetCode.
+%                   refLens, targetEventType, and targetCode.
 %
 % See also MAT2CSV
 

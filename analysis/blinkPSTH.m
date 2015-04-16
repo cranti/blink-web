@@ -1,8 +1,7 @@
 function results = blinkPSTH(refEvents, targetEvents, lagSize, numPerms, varargin)
 %BLINKPSTH - Create a peri-stimulus time histogram using a group's blink
-%data.
-%
-% TODO - document this method, test
+%data. Assess significance via permutation testing, with the number of
+%permutations specified.
 %
 % INPUTS
 %   refEvents       Cell vector, containing row vectors of reference data.
@@ -94,7 +93,7 @@ function results = blinkPSTH(refEvents, targetEvents, lagSize, numPerms, varargi
 % SEE ALSO: GETREFEVENTS, GETTARGETEVENTS, BLINKPSTHSUMMARY, BLINKPSTHFIGURES
 
 % Written by Carolyn Ranti
-% 4.9.2015
+% 4.16.2015
 % Adapted from code written by Jenn Moriuchi, Grace Ann Marrinan, and Sarah Shultz
 
 %% Set up
@@ -125,7 +124,7 @@ assert(length(lagSize)==2 && isnumeric(lagSize), 'LagSize must be a vector with 
 windowSize = sum(lagSize) + 1;
 
 %Figure out whether to run permutation test
-runPermTest = (nargin>=4) && (~isempty(numPerms)) && (numPerms >= 0);
+runPermTest = (nargin>=4) && (~isempty(numPerms)) && (numPerms > 0);
 
 %% Parse optional inputs and check
 assert(mod(length(varargin),2)==0, 'Odd number of optional parameters (must be name, value pairs)');
@@ -227,7 +226,7 @@ if runPermTest
         % circshift data: shift each subject independently 
         shiftSizes = round(allDataLens.*rand(1,numTargets));
         for ii = 1:numTargets
-            permutedData{ii} = circshift(targetEvents{ii}, shiftSizes(ii), 2); %TODO - check this/make sure that dimensions are correct
+            permutedData{ii} = circshift(targetEvents{ii}, shiftSizes(ii), 2);  %what to shift, how much to shift it, dimension of shift
         end
         
         permResults(p,:) = makePSTH(refEvents, permutedData, lagSize, startFrame, inclThresh, 1); 

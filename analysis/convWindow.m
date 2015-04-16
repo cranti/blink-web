@@ -27,7 +27,7 @@ function [Y, optW] = convWindow(blinkInput, smoothType, W,  hWaitBar)
 %
 % See also SSKERNEL
 
-% Carolyn Ranti
+% Carolyn Ranti - WHO WROTE THIS ORIGINALLY??
 % Updated 2.18.15
 
 

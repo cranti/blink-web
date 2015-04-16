@@ -39,11 +39,11 @@ try
     fprintf(fid, 'Input file:,%s\n', inputFile);
     fprintf(fid, 'Sample rate (Hz):,%s\n', num2str(results.inputs.sampleRate));
     fprintf(fid, '# Individuals:,%i\n', results.inputs.numIndividuals);
-    fprintf(fid, '# permutations:,%i\n', results.inputs.numPerms);
+    fprintf(fid, '# Permutations:,%i\n', results.inputs.numPerms);
+    fprintf(fid, '# Consecutive samples (sig.):,%i\n', results.inputs.sigFrameThr);
     
     %%
     fprintf(fid, '\n** SMOOTHING **\n');
-    fprintf(fid, 'Bandwidth selection:,%s\n', results.inputs.smoothType);
     fprintf(fid, 'Gaussian kernel bandwidth:,%f\n', results.optW);
     
     %% increased and decreased frames are printed in a row each, if they fit

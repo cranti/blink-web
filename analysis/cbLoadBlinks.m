@@ -5,7 +5,7 @@ function cbLoadBlinks(~, ~, gd)
 % - Callback function for blinkGUI.m
 % - gd is an instance of BlinkGuiData
 
-    
+try    
     %% choose file dialog box: 
     [input_file, PathName] = uigetfile('*.csv','Choose a csv file with blink data');
     if input_file == 0
@@ -87,5 +87,12 @@ function cbLoadBlinks(~, ~, gd)
         err = addCause(err, ME);
         gui_error(err, gd.guiSettings.error_log);
     end
+    
+catch ME % Catch and log any errors that weren't dealt with
+    err = MException('BlinkGUI:unknown', 'Unknown error');
+    err = addCause(err, ME);
+    gui_error(err, gd.guiSettings.error_log);
+    return
+end
     
 end

@@ -2,6 +2,9 @@ classdef BlinkGuiData < handle
 %BLINKGUIDATA Container class for various settings in blink GUI
 %
 % See also: BLINKGUI
+%
+% Note - handles property is set via a method, which takes the object to a
+% parent figure and uses guihandles to generate the handles structure
 
 % Very little error checking
    
@@ -27,12 +30,12 @@ classdef BlinkGuiData < handle
         end
         
         % reset blink perm stuff
-        function obj = resetPerm(obj)
+        function resetPerm(obj)
            obj.blinkPermInputs = BlinkPermInputs;
         end
         
         % reset blink psth stuff
-        function obj = resetPsth(obj)
+        function resetPsth(obj)
             obj.blinkPsthInputs = BlinkPsthInputs;
         end
         

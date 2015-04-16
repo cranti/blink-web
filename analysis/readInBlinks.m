@@ -4,7 +4,8 @@ function blinks = readInBlinks(filename, formatType, sampleLen)
 % INPUTS
 %   filename    Name of a csv file containing blink data
 %   formatType  'BinaryMat' or '3col'. See below for details.
-%   sampleLen   int - Only necessary if formatType is '3col'
+%   sampleLen   (int) Length of the data collected, in number of samples. 
+%               Only necessary if formatType is '3col'
 %   
 % OUTPUT
 %   blinks      nxf matrix (n = subjects, f = frames) with binary blink
@@ -28,17 +29,19 @@ function blinks = readInBlinks(filename, formatType, sampleLen)
 %   specifications for the blink analysis functions.
 
 % Written by Carolyn Ranti
-% 2.23.2015
+% 4.16.2015 (minor - added nargin check)
 
 try
-    if strcmpi(formatType,'BinaryMat')
-        blinks = csvread(filename);
-        blinks = blinks';
-    elseif strcmpi(formatType,'3col')
-        blinks_3col = csvread(filename);
-        [blinks,~] = blink3ColConvert(blinks_3col, sampleLen);
-    else
-        error('Unknown formatType %s', formatType);
+    switch lower(formatType)
+        case 'binarymat'
+            blinks = csvread(filename);
+            blinks = blinks';
+        case '3col'
+            assert(nargin==3, 'sampleLen must be provided if formatType is 3col');
+            blinks_3col = csvread(filename);
+            [blinks,~] = blink3ColConvert(blinks_3col, sampleLen);
+        otherwise
+            error('Unknown formatType %s', formatType);
     end
     
 catch ME
