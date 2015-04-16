@@ -39,6 +39,11 @@ def url_to_html(analysis, page):
         return 'results-%s.html' % analysis
     elif page == 'howto':
         return 'howto-%s.html' % analysis
+    # elif page == 'methods':
+    #     return 'methods-%s.html' % analysis
+    else:
+        return '%s-%s.html' % (page, analysis)
+
 
 
 ### db - TODO: look at this/edit (pulled from flask tutorial)
@@ -86,19 +91,9 @@ def background(analysis):
 def howto(analysis):
     return render_template(url_to_html(analysis,'howto'))
 
-# #TODO - this will need the most work
-# @app.route('/<analysis>/analyze/', methods = ['GET', 'POST'])
-# def run_analysis(analysis):
-#     if request.method == 'POST':
-#         app.logger.debug(request.form['numPerms'])
-#         plot_data = plot1.plot1()
-#         return  render_template(url_to_html(analysis,'results'), plot_data=plot_data) # redirect(url_for('results',analysis=analysis))
-#     else:
-#         return render_template(url_to_html(analysis,'run'))
-
-@app.route('/<analysis>/results/', methods = ['GET'])
+@app.route('/<analysis>/methods/', methods = ['GET'])
 def results(analysis):
-    return render_template(url_to_html(analysis,'results'))
+    return render_template(url_to_html(analysis,'methods'))
 
 @app.route('/code/', methods = ['GET'])  
 def get_code():
