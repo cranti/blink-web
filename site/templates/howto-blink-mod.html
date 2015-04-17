@@ -122,7 +122,12 @@
 		3. &nbsp;Advanced settings (optional)
 		<ul class="content2">
 			<li>Specify <b>bandwidths</b> to consider in <a href="#">optimization of the Gaussian smoothing kernel</a>. User can specify a single value or a range (min:[step]:max)</li>
-			<li>Set <b>significance thresholds</b> for the permutation test</li>
+			<li>Set <b>significance thresholds</b>:
+				<ul> 
+					<li>Percentiles of the permutations used as <b>low</b> and <b>high</b> significance cutoffs</li>
+					<li>Minimum number of <b>consecutive frames</b> necessary to accept significantly decreased or increased blinking (REWORD)</li>
+				</ul>
+			</li>
 		</ul>
 	</div>
 </div>
@@ -145,10 +150,16 @@
 			 Comprehensive summary document, containing the following sections:
 
 			<ul class = "content2">
-				<li><b>INPUTS</b> - full path to input file, sample rate, number of individuals, number of permutations</li>
+				<li><b>INPUTS</b> 
+					<ul>
+						<li>Input file (full path)</li>
+						<li>Sample rate</li>
+						<li>Number of individuals</li>
+						<li>Number of permutations</li>
+						<li>Number of consecutive frames (significance threshold)</li>
+					</ul>
 				<li><b>SMOOTHING</b> 
 					<ul>
-						<li>Bandwidth selection - always sskernel (TODO change this)</li>
 						<li>Gaussian kernel bandwidth - standard deviation of the Gaussian kernel used to smooth data</li>
 					</ul>
 				</li>
@@ -200,10 +211,11 @@
 			<li>inputs – a struct with fields:
 				<ul>
 					<li>numIndividuals – number of individuals in the input</li>
-					<li>numFrames – number of samples in the input</li>
+					<li>dataLen – number of samples in the input</li>
 					<li>numPerms – number of permutations </li>
 					<li>sampleRate – sample rate (Hz)</li>
 					<li>smoothType – method by which bandwidth of smoothing kernel was selected (sskernel)</li>
+					<li>sigFrameThr – significance threshold for number of consecutive frames</li>
 				</ul>
 			</li>
 		</ul>
@@ -223,7 +235,7 @@
 	</div>
 
 	<div class = "content1">
-		A figure with the results of the analysis will appear in a separate window. (see <a href="#outputs">Outputs</a> for details)
+		A figure with the results of the analysis will appear in a separate window. See <a href="#outputs">Outputs</a> for details.
 	</div>
 
 </div>

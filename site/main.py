@@ -1,8 +1,10 @@
 #TODO:
-# - Database stuff
+# - Database stuff (remove it)
 # - deployment
 #
 # - fix image links in the html docs
+
+# - should i use trailing slash for url definitions or not?
 
 # URL mappings
 # Home (/)
@@ -16,6 +18,7 @@
 import sqlite3
 from flask import g
 from contextlib import closing 
+
 
 from flask import Flask, render_template, request, redirect, url_for
 
@@ -33,21 +36,16 @@ app.config.from_envvar('BLINKWEB_SETTINGS', silent = True) #won't complain if th
 def url_to_html(analysis, page):
     if page == 'background':
         return 'background-%s.html' % analysis
-    elif page == 'run':
-        return 'run-%s.html' % analysis
-    elif page == 'results':
-        return 'results-%s.html' % analysis
     elif page == 'howto':
         return 'howto-%s.html' % analysis
-    # elif page == 'methods':
-    #     return 'methods-%s.html' % analysis
+    elif page == 'methods':
+        return 'methods-%s.html' % analysis
     else:
         return '%s-%s.html' % (page, analysis)
 
 
 
 ### db - TODO: look at this/edit (pulled from flask tutorial)
-
 def connect_db():
     return sqlite3.connect(app.config['DATABASE'])
 
@@ -87,6 +85,10 @@ def home_page():
 def background(analysis):
     return render_template(url_to_html(analysis,'background'))
 
+@app.route('/<analysis>/', methods = ['GET'])
+def baseanalysis(analysis):
+    return redirect('/%s/background' % analysis)
+
 @app.route('/<analysis>/howto/', methods = ['GET'])
 def howto(analysis):
     return render_template(url_to_html(analysis,'howto'))
@@ -95,11 +97,11 @@ def howto(analysis):
 def results(analysis):
     return render_template(url_to_html(analysis,'methods'))
 
-@app.route('/code/', methods = ['GET'])  
+@app.route('/install/', methods = ['GET'])  
 def get_code():
-    return render_template('getcode.html')
+    return render_template('install.html')
 
-@app.route('/contact/', methods = ['GET'])  
+@app.route('/contact', methods = ['GET'])  
 def contact_us():
     return render_template('contact.html')
 
