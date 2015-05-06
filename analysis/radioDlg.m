@@ -19,11 +19,10 @@ radioValues = options(:,2);
 % TODO - this size calculation could be a little less hacky
 numOpts = size(options,1);
 
-radioOptH = 50;
-radioH = numOpts*radioOptH;
-buttonH = 40;
-boxH = buttonH + radioH;
-
+radioOptH = 50; %h of one radio button option
+radioH = numOpts*radioOptH; %h of entire radio group
+buttonH = 40; %ok/cancel button
+boxH = buttonH + radioH; 
 boxW = 300;
 
 dboxPos = getnicedialoglocation([0 0 boxW boxH],'pixels');

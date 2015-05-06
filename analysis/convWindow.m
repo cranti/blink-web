@@ -27,7 +27,7 @@ function [Y, optW] = convWindow(blinkInput, smoothType, W,  hWaitBar)
 %
 % See also SSKERNEL
 
-% Carolyn Ranti - WHO WROTE THIS ORIGINALLY??
+% Carolyn Ranti - NOT SURE WHO WROTE THIS ORIGINALLY
 % Updated 2.18.15
 
 
@@ -55,6 +55,11 @@ switch lower(smoothType)
         error('Unknown value for smoothType: %s',smoothType);
 end
 
+%optW is empty if the operation is canceled by the progress bar
+if isempty(optW)
+    Y = [];
+    return
+end
 
 %% gaussian window to convolve with data
 xrange = -4*optW:1:4*optW;

@@ -97,10 +97,10 @@ C = zeros(1,length(W),'single');
 for k = 1: length(W)
     
     if waitBarLen
-        %Check for "cancel" button press
-        %TODO - need to figure out what should be done to pass on...
+        %Check for "cancel" button press, return empty optW
         if getappdata(hWaitBar,'canceling')
             delete(hWaitBar);
+            optW = [];
             return
         end
         
@@ -116,5 +116,6 @@ C = C/2/sqrt(pi);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Optimal Bin Size Selection
-[optC,nC]=min(C); optW = W(nC);
+[optC,nC]=min(C); 
+optW = W(nC);
 

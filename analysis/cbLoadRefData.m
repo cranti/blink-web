@@ -16,6 +16,11 @@ try
         startFrame = 1;
     else
         startFrame = int32(startFrame);
+        %this is a catch to make sure that start frame isn't rounded down
+        %to 0 by int32 conversion
+        if startFrame==0
+            startFrame=1;
+        end
     end
     set(gd.handles.hStartFrameEdit,'String',startFrame);
     

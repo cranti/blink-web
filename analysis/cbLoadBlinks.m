@@ -70,6 +70,7 @@ try
         return
     end
     
+    %Plot title: input file name, sample rate
     plotTitle = {input_file, sprintf('Sample rate: %s Hz',num2str(sampleRate))};
         
     %% save everything to GUIDATA

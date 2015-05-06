@@ -1,3 +1,4 @@
+function fractBlinks = raw2fractBlinks(blinks)
 %RAW2FRACTBLINKS - Convert blink input into n x f matrix with fractional 
 % blinks
 %
@@ -18,9 +19,6 @@
 % Carolyn Ranti
 % 12.3.2014
 
-
-%% 
-function fractBlinks = raw2fractBlinks(blinks)
 
 fractBlinks = zeros(size(blinks));
 

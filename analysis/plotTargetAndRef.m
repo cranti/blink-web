@@ -1,18 +1,38 @@
 function plotTargetAndRef(blinkPsthInputs, axesH, varargin)
 %PLOTTARGETANDREF
 %
-% Plot target and reference events (see blinkPSTH.m) in an axis (axsH)
+% Plot target and reference events (from blinkPsthInputs) in an axis 
+% (axesH).
 %
-% Function for blinkGUI.m
-
-% TODO - document (pay attn to: input, xrange, etc)
-% sortby option (esp for 3 column format -- input order?)
-
+% Each set is plotted on a "row", centered around an integer.
+%
+% Target events are plotted as blue circles, and reference events are
+% plotted as black vertical lines. If there is only one reference set, it
+% spans the entire y range. Otherwise, each reference set has a height of
+% 1, and it is plotted on the same row as the corresponding target set.
+%
+% The x axis range and y axis range can be specified with parameter
+% key/value pairs ('xrange' and 'yrange', as vectors with 2 numbers, a min
+% and a max). 
+%
+% Can also specify the order that event sets are plotted ('sortby')
+%   'original' - sorted in order of set identifier (default)
+%   'ascending' - target sets with *fewer* events are on lower rows
+%   'descending' - target sets with *more* events are on lower rows
+%
 % NOTES 
 % > This only works when target and reference events are 1s and 0s (and
 % NaNs) 
-% > The overall min/max values for things are hard coded - must match
-% scrolling script (cbScrollPsth.m)
+% > Using getPsthPlotSize for x and y ranges, and not doing any error
+% checking for the optional range inputs. HOWEVER, if an "invalid" x or y
+% range is passed in, it shouldn't error out.
+% > Also, note that cbScrollPsth also uses getPsthPlotSize, and there are
+% boundary checks in there.
+%
+% See also: GETPSTHPLOTSIZE, BLINKPSTHINPUTS, BLINKGUI, CBSCROLLPSTH
+
+% Carolyn Ranti
+% 4.23.15
 
 %%
 try
@@ -25,38 +45,39 @@ try
     % Get target and reference events out of blinkPsthInputs
     targetEvents = blinkPsthInputs.targetEvents;
     targetOrder = blinkPsthInputs.targetOrder; %to figure out ylabels
+    targetLens = cellfun(@length,targetEvents); 
     
     refEvents = blinkPsthInputs.refEvents;
+    refOrder = blinkPsthInputs.refOrder; %to match to target
     refLens = blinkPsthInputs.refLens; %for figuring out xlim
     
-
-    
-    %% Parse varargin
-    
-    %get maximum size of target events and maximum reference event:
-    if ~isempty(targetEvents)
-        dataMaxX = max(cellfun(@length,targetEvents));
-        dataMaxY = length(targetEvents)+.5;
-    elseif ~isempty(refEvents)
-        dataMaxX = max(refLens);
-        dataMaxY = length(refEvents)+.5;
-    else
+    % if there are no targets or refs, quit
+    if isempty(targetEvents) && isempty(refEvents)
         return
     end
     
-    %default: (this must match hard-coded values in cbScrollPsth)
-    minX = 0;
-    maxX = min(dataMaxX, 200);
-    minY = .5; 
-    maxY = min(10.5, dataMaxY);
+    %% Parse varargin (set plot size and sort)
+
+    %DEFAULT, from getPsthPlotSize - 10 event sets, 200 frames of data
+    % (or whatever is possible given the length of the targets and refs)
+    [def_xRange, def_yRange] = getPsthPlotSize(targetLens, refLens);
+    minX = min(def_xRange);
+    maxX = max(def_xRange);
+    minY = min(def_yRange);
+    maxY = max(def_yRange);
+    
+    %default sort = original
     sortby = 'original';
     
-    
+    % NB: no error checking here for x and y ranges
     for v = 1:2:length(varargin)
         switch lower(varargin{v})
             case 'xrange'
                 minX = min(varargin{v+1});
                 maxX = max(varargin{v+1});
+            case 'yrange'
+                minY = min(varargin{v+1});
+                maxY = max(varargin{v+1});
             case 'sortby'
                 if strcmpi(varargin{v+1}, 'original')
                     sortby = 'original';
@@ -65,17 +86,9 @@ try
                 elseif strcmpi(varargin{v+1}, 'ascend')
                     sortby = 'ascend';
                 end
-            case 'yrange'
-                minY = min(varargin{v+1});
-                minY = max(minY, .5);
-                
-                maxY = max(varargin{v+1});
-                maxY = max(maxY, dataMaxY);
-                % Note: limit min/max Y to what is possible for the data,
-                % because these values are used to index into arrays (more
-                % issue prone than just not plotting anything, for the Xs)     
         end
     end
+    
 
     %% Get ready to plot
     
@@ -108,12 +121,26 @@ try
             tOrder = tOrder';
         end
         
+        %Create ytick and yticklabels
+        yticks = [];
+        yticklabels = [];
+        
         %only plot the target events that are within the y range specified
         for y = (minY+.5):(maxY-.5) 
+            
+            %if this row exceeds the length of target data sets, just
+            %continue
+            if y>length(tOrder)
+                continue
+            end
             
             %get target events for this person
             t = tOrder(y);
             events = find(targetEvents{t}==1);
+            
+            %add to yticks
+            yticks = [yticks, y];
+            yticklabels = [yticklabels, targetOrder(t)];
             
             %take out events too large/small to plot:
             events = events(events<=maxX & events>=minX);
@@ -145,7 +172,13 @@ try
             
             %for each event
             for ev = 1:length(refs)
-                plot(axesH, [refs(ev), refs(ev)], [0, dataMaxY], 'k');
+                plot(axesH, [refs(ev), refs(ev)], [0, maxY], 'k');
+            end
+            
+            % if target events don't exist, DON'T have any y ticks
+            if isempty(targetEvents)      
+                yticks = [];
+                yticklabels = [];
             end
             
         % Plot multiple reference events as vertical lines that are 1 unit tall
@@ -155,16 +188,26 @@ try
             %match targets and reference events
             if isempty(targetEvents)
                 tOrder = 1:length(refEvents);
+                
+                %if there are no target events, yticks and yticklabels
+                %haven't been set yet: initialize
+                yticks = [];
+                yticklabels = [];
             end
             
             for y = (minY+.5):(maxY-.5)
                 
-                % get this set of reference events
-                r = tOrder(y);
+                %if there is no reference set for this row, continue 
+                r = find(refOrder==tOrder(y));
+                if isempty(r)
+                    continue
+                end
+                
+                % otherwise, get the appropriate ref set out of refEvents
                 refs = refEvents{r};
                 
                 %set y range for each vertical line
-                yrange = [r-.5, r+.5];
+                yrange = [y-.5, y+.5];
                 
                 % take out events too large/small to plot
                 refs = refs(refs<=maxX & refs>=minX);
@@ -173,19 +216,28 @@ try
                 for event = 1:length(refs)
                     plot(axesH, [refs(event), refs(event)], yrange, 'k');
                 end
+               
+                
+                %if there are no target events, yticks and yticklabels
+                %haven't been set yet:
+                if isempty(targetEvents)
+                    yticks = [yticks, y];
+                    yticklabels = [yticklabels, refOrder(r)];
+                end
             end
 
         end
+            
 
+        
+        
         % Add to title text
         titleText{end+1} = sprintf('REFERENCE: %s (black)', refTitle);
     end
     
     %% set axis limits and labels:
 
-    %set ytick and ytick label
-    yticks = 1:dataMaxY;
-    yticklabels = targetOrder(tOrder);
+    %set y tick labels
     set(axesH, 'YTick', yticks, 'YTickLabel', yticklabels);
 
     %set axis limits
@@ -195,8 +247,8 @@ try
     %% Label plot
     if plottedThings
         title(titleText,'Interpreter','none');
-        xlabel('Sample #');
-        ylabel('Target Participant');
+        xlabel('Sample');
+        ylabel('Set Number');
     end
     
 catch ME

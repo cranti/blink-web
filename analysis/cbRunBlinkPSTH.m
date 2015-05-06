@@ -1,7 +1,7 @@
 function cbRunBlinkPSTH(~, ~, gd)
 %CBRUNBLINKPSTH - run blink PSTH analysis. Callback function for blinkGUI.m
 %
-%
+% Note: no error checking for the output file prefix (remove /\. ?)
 
 try
     %% Get all of the variables we'll be using out of gd (except handles)
@@ -31,7 +31,7 @@ try
     targetOrder = gd.blinkPsthInputs.targetOrder;
     refOrder = gd.blinkPsthInputs.refOrder;
     
-    %Reference set lengths (passed into blinkPSTH, matched to targetLens)
+    %Reference set lengths (matched to targetLens)
     refLens = gd.blinkPsthInputs.refLens; %no error checking for this
     
     % What to save
@@ -41,7 +41,7 @@ try
     
     % Output things
     outputDir = gd.output.dir;
-    outputPrefix = get(gd.handles.hOutputFile,'String'); %TODO - there is currently no error checking here - remove /\. ?
+    outputPrefix = get(gd.handles.hOutputFile,'String'); 
     figFormat = gd.output.figFormat;
     
     %GUI settings
@@ -106,22 +106,27 @@ try
     numTargets = length(targetEvents);
     numRefSets = length(refEvents);
     
-    %TODO definitely check this
     %Make sure that all target identifiers have matching reference sets:
     if (numRefSets >= numTargets) && ~isempty(setdiff(targetOrder, refOrder)) %note - setdiff returns items in targetOrder that aren't in refOrder
         errordlg('1 or more target sets is not matched to a reference set (by ID)');
         return
-    elseif numRefSets~=1
+        
+    %Check: if there aren't enough ref sets (but there's more than 1)
+    elseif numRefSets>1 && numRefSets<numTargets
         errordlg('Event set mismatch: there must be EITHER one reference set OR one reference set per target set');
         return
     end
     
     %Remove ref sets that aren't in target events (by ID)
-    %TODO - check this!
     if numRefSets > numTargets
         
         % find the index of refOrder #s that are also in targetOrder
-        [~, ~, iref] = intersect(targetOrder, refOrder);
+        [~, itarg, iref] = intersect(targetOrder, refOrder);
+        
+        %limit target events to the intersection (this is to ensure the
+        %same order)
+        targetEvents = targetEvents(itarg);
+        targetOrder = targetOrder(itarg);
         
         %limit refEvents and refOrder to these values
         refEvents = refEvents(iref);
@@ -131,17 +136,19 @@ try
     
     
     %Check ref lens here, rather than in blinkPSTH
-    allDataLens = cellfun(@length, targetEvents);
+    targetLens = cellfun(@length, targetEvents);
     if length(refLens) == 1
-        if ~sum(allDataLens == refLens)
+        if ~sum(targetLens == refLens)
             errordlg('Mismatch between length of target event sets and length of reference event set.');
+            return
         end
-    elseif length(refLens) == numRefSets
-        if (isrow(refLens) && ~isrow(allDataLens)) || (~isrow(refLens) && isrow(allDataLens))
+    else
+        if (isrow(refLens) && ~isrow(targetLens)) || (~isrow(refLens) && isrow(targetLens))
             refLens = refLens';
         end
-        if ~isequal(allDataLens, refLens)
+        if ~isequal(targetLens, refLens)
             errordlg('Mismatch between length of target event sets and length of reference event sets.');
+            return
         end
     end
            
@@ -303,7 +310,7 @@ try
     end
     
     try
-        blinkPSTHFigures(dirFilePrefix, results, figFormat); % %TODO - update this script
+        blinkPSTHFigures(dirFilePrefix, results, figFormat);
     catch ME
         gui_error(ME, gd.guiSettings.error_log);
     end

@@ -35,6 +35,8 @@ try
     switch lower(formatType)
         case 'binarymat'
             blinks = csvread(filename);
+            %transpose the data: in the file as one subject per column,
+            %but we want it to be one subject per *row*
             blinks = blinks';
         case '3col'
             assert(nargin==3, 'sampleLen must be provided if formatType is 3col');

@@ -131,6 +131,12 @@ end
 % gaussian window to convolve with data
 [Y, optW] = convWindow(fractBlinks, smoothType, W, hWaitBar); 
 
+%Y (and optW) empty if the operation is canceled by the progress bar
+if isempty(Y)
+    results = struct();
+    return 
+end
+
 %smooth data
 smoothedBR = smoothBlinkRate(fractBlinks, sampleRate, Y);
 

@@ -7,105 +7,66 @@ function cbScrollPsth(~, ~, gd, direction)
 
 
 try
-    %% Get things out of guidata
+    %% Get target/ref data
+    
     targetEvents = gd.blinkPsthInputs.targetEvents;
     refEvents = gd.blinkPsthInputs.refEvents;
-    
     if isempty(targetEvents) && isempty(refEvents)
         return
     end
+     
+    refLens = gd.blinkPsthInputs.refLens;
+    targetLens = cellfun(@length, targetEvents); % Calculate targetLens
     
-    %% Get plot axes
+    %% Get plot handle and current size of axes
     h = gd.handles.hPlotAxes;
-    
-    %current xranges:
     xRangeCurr = xlim(h);
-    yRangeCurr = ylim(h); %figure out...
-    
-    % GET the psth plot size out of GUIDATA? or just maintain same value here
-    % and in plotTargetAndRef
-    xPlotSize = 200;
-    yPlotSize = 10;
-    
-    %% Possible X range
-    
-    %possible xrange:
-    if ~isempty(targetEvents)
-        maxX = max(cellfun(@length,targetEvents));
-    elseif ~isempty(refEvents)
-        maxX = max(refSetLen);
-    end
-    xRangePoss = [0 maxX];
-    
-    
-    %% Possible Y range
-    
-    %possible xrange:
-    if ~isempty(targetEvents)
-        maxY = length(targetEvents)+.5;
-    elseif ~isempty(refEvents)
-        maxY = length(refEvents)+.5;
-    end
-    yRangePoss = [.5 maxY];
-    
-    %%
-    
+    yRangeCurr = ylim(h);
+  
+    %% Set axis ranges and sort option
+ 
     % defaults - leave as is
     xRange = xRangeCurr;
     yRange = yRangeCurr;
     sortby = gd.blinkPsthInputs.plotSort;
     
     switch lower(direction)
+        % NOTE: if scrolling isn't possible in the specified direction,
+        % getPsthPlotSize returns the current axis ranges
+         
         case 'left'
-            if min(xRangeCurr) <= min(xRangePoss)
-                return
-            end
-            
-            newMin = max(min(xRangeCurr)-xPlotSize, min(xRangePoss));
-            newMax = min(newMin+xPlotSize, max(xRangePoss));
-            xRange = [newMin, newMax];
+            [xRange, yRange] = getPsthPlotSize(targetLens, refLens, xRangeCurr, yRangeCurr, 'left');
             
         case 'right'
-            if max(xRangeCurr) >= max(xRangePoss)
-                return
-            end
-            
-            xRange = [max(xRangeCurr), max(xRangeCurr) + xPlotSize];
-            
+            [xRange, yRange] = getPsthPlotSize(targetLens, refLens, xRangeCurr, yRangeCurr, 'right');
+
         case 'down'
-            
-            if min(yRangeCurr) <= min(yRangePoss)
-                return
-            end
-            
-            newMin = max(min(yRangeCurr)-yPlotSize, min(yRangePoss));
-            newMax = min(newMin+yPlotSize, max(yRangePoss));
-            yRange = [newMin, newMax];
-            
+            [xRange, yRange] = getPsthPlotSize(targetLens, refLens, xRangeCurr, yRangeCurr, 'down');
+
         case 'up'
-            if max(yRangeCurr) >= max(yRangePoss)
-                return
-            end
-            
-            yRange = [max(yRangeCurr), max(yRangeCurr) + yPlotSize];
-            
-            %SORTING -- reset y to bottom
+            [xRange, yRange] = getPsthPlotSize(targetLens, refLens, xRangeCurr, yRangeCurr, 'up');
+
+        %SORTING -- reset y to bottom
         case 'sort_ascend'
             sortby = 'ascend';
             gd.blinkPsthInputs.plotSort = 'ascend';
-            yRange = [.5 .5+yPlotSize];
+            %reset yRange to default
+            [~, yRange] = getPsthPlotSize(targetLens, refLens);
             
         case 'sort_descend'
             sortby = 'descend';
             gd.blinkPsthInputs.plotSort = 'descend';
-            yRange = [.5 .5+yPlotSize];
+            %reset yRange to default
+            [~, yRange] = getPsthPlotSize(targetLens, refLens);
             
         case 'sort_orig'
             sortby = 'original';
             gd.blinkPsthInputs.plotSort = 'original';
-            yRange = [.5 .5+yPlotSize];
+            %reset yRange to default
+            [~, yRange] = getPsthPlotSize(targetLens, refLens);
     end
     
+
     cla(gd.handles.hPlotAxes, 'reset');
     plotTargetAndRef(gd.blinkPsthInputs, h, ...
         'xrange', xRange,...

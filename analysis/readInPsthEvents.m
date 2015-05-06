@@ -98,7 +98,7 @@ if strcmpi(formatType, '3col')
         %that order to sort psthEvents --> this is to allow for matching
         %between refSets and targetSets
         [setOrder, I] = sort(setOrder);
-        psthEvents = psthEvents(I,:);
+        psthEvents = psthEvents(I);
         
     catch ME
         err = MException('BlinkGUI:fileIn',sprintf('Error converting 3 column formatted file %s',filename));

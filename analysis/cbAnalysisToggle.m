@@ -71,8 +71,14 @@ try
             set(gd.handles.hScrollLeft, 'Callback', {@cbScrollPsth gd 'left'});
 
             if ~isempty(gd.blinkPsthInputs.targetEvents) || ~isempty(gd.blinkPsthInputs.refEvents)
-                % Plot both target data AND reference data
-                plotTargetAndRef(gd.blinkPsthInputs, gd.handles.hPlotAxes);
+                
+                % reset the sortby option in gd to original
+                sortby = 'original';
+                gd.blinkPsthInputs.plotSort = sortby;
+                
+                 % Plot both target data AND reference data
+                plotTargetAndRef(gd.blinkPsthInputs, gd.handles.hPlotAxes,...
+                    'sortby', sortby);
             end
 
     end
