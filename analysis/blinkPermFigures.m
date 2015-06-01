@@ -6,7 +6,7 @@ function blinkPermFigures(prefix, results, figFormat, axesH)
 %               don't want to save in current directory.
 %   results     Results struct from blinkPerm.m
 %   figFormat   Format for figures. Must be one of the following:
-%               'eps', 'fig', 'jpg', 'pdf', 'png', 'tif'
+%               'eps', 'fig', 'jpg', 'pdf', 'png', 'tif', 'epsc'
 %   axesH       Optional. Vector with an axes handle where results will be
 %               plotted. If this is not passed in, or if the handle is NaN,
 %               a new figure is created.
@@ -17,15 +17,20 @@ function blinkPermFigures(prefix, results, figFormat, axesH)
 % See also BLINKPERM
 
 % Written by Carolyn Ranti
-% 2.23.2015
+% 6.1.2015
 
 
 %%
-narginchk(3,4);
+narginchk(2,4);
 
-if ~isempty(figFormat)
-    assert(sum(strcmp(figFormat,{'eps', 'fig', 'jpg', 'pdf', 'png', 'tif'}))==1,'Invalid figure format.');
+if nargin == 2
+    figFormat = '';
 end
+
+% Removing this check 6/1/15 - allow for other formats
+% if ~isempty(figFormat)
+%     assert(sum(strcmp(figFormat,{'eps', 'fig', 'jpg', 'pdf', 'png', 'tif'}))==1,'Invalid figure format.');
+% end
 
 if nargin < 4 || length(axesH)~=1
     axesH = NaN;
@@ -81,7 +86,15 @@ end
 
 try
     if ~isempty(figFormat)
-        saveas(ax1,[prefix,'BLINK_MOD.',figFormat]);
+        filename = [prefix,'BLINK_MOD.',figFormat];
+        
+        %need to specify different "format" vs suffix for eps, so that it
+        %prints in color
+        if strcmpi(figFormat, 'eps')
+            figFormat = 'epsc';
+        end
+        
+        saveas(ax1, filename, figFormat);
     end
 catch ME
     err = MException('BlinkGUI:plotting', 'Error saving blink modulation figures.');

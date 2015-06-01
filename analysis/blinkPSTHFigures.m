@@ -17,7 +17,7 @@ function blinkPSTHFigures(prefix, results, figFormat, axesH)
 % See also BLINKPSTH
 
 % Carolyn Ranti
-% 3.19.2015
+% 6.1.2015
 
 
 %%
@@ -27,9 +27,10 @@ if nargin == 2
     figFormat = '';
 end
 
-if ~isempty(figFormat)
-    assert(sum(strcmp(figFormat,{'eps', 'fig', 'jpg', 'pdf', 'png', 'tif'}))==1,'Invalid figure format.');
-end
+% Removing this check 6/1/15 - allow for other formats
+% if ~isempty(figFormat)
+%     assert(sum(strcmp(figFormat,{'eps', 'fig', 'jpg', 'pdf', 'png', 'tif'}))==1,'Invalid figure format.');
+% end
 
 if nargin < 4 || length(axesH)~=2
     axesH = [NaN NaN];
@@ -132,8 +133,17 @@ end
 
 try
     if ~isempty(figFormat)
-        saveas(ax1,[prefix,'PSTH.',figFormat]);
-        saveas(ax2,[prefix,'PSTHchangeFromMean.',figFormat]);
+        filename1 = [prefix,'PSTH.',figFormat];
+        filename2 = [prefix,'PSTHchangeFromMean.',figFormat];
+        
+        %need to specify different "format" vs suffix for eps, so that it
+        %prints in color
+        if strcmpi(figFormat, 'eps')
+            figFormat = 'epsc';
+        end
+        
+        saveas(ax1, filename1, figFormat);
+        saveas(ax2, filename2, figFormat);
     end
 catch ME
     err = MException('BlinkGUI:plotting', 'Error saving PSTH figures.');

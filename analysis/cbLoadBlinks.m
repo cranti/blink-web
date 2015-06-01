@@ -5,21 +5,40 @@ function cbLoadBlinks(~, ~, gd)
 % - Callback function for blinkGUI.m
 % - gd is an instance of BlinkGuiData
 
+% 6.1.2015
+
 try    
     %% choose file dialog box: 
-    [input_file, PathName] = uigetfile('*.csv','Choose a csv file with blink data');
+
+    %if there's a "last directory" saved in guidata, cd to it    
+    origDir = pwd;
+    lastDir = gd.guiSettings.lastDir;
+    if isdir(lastDir)
+        cd(lastDir)
+    end
+    
+    %pick a file, then cd back to original directory
+    [input_file, PathName] = uigetfile('*.csv','Choose a csv file with blink data');    
+    cd(origDir)
+    
+    %if user canceled, return
     if input_file == 0
         return
     end
+    
     input_file_full = dirFileJoin(PathName, input_file);
+    
+    %save the folder as the "last directory"
+    gd.guiSettings.lastDir = PathName;
 
+    
     %% Dialog box: get file type before loading file
     options = {'One subject per column','BinaryMat';
                 'Three column format','3col'};
     [formatType, value] = radioDlg(options, 'Select Format of Blink Data');
     
-    %if user cancels
-    if ~value
+    %if user cancels or doesn't select an option
+    if ~value || isempty(formatType)
         return
     end
     

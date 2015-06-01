@@ -73,24 +73,7 @@ try
         return
     end
 
-
-    %% Warnings - chance to opt out
-
-    % OVERWRITING FILES
-    % This should be updated if any of the file naming patterns change
-    if saveMat || saveCsv || saveFigs
-        file1 = [dirFileJoin(outputDir,outputPrefix), 'BLINK_MOD.', figFormat];
-        file2 = [dirFileJoin(outputDir,outputPrefix), 'BLINK_MOD.mat'];
-        file3 = [dirFileJoin(outputDir,outputPrefix), 'BLINK_MODsummary.csv'];
-
-        if exist(file1, 'file') || exist(file2, 'file') || exist(file3, 'file')
-            [~, cont] = warndlgCancel({'Output files with this prefix exist in the selected output directory.', 'OK to overwrite?'}, 'Invalid Entry', 'modal', 1);
-            if ~cont
-                return
-            end
-        end
-    end
-
+    
     %% Check advanced options and revert to defaults if they are invalid
 
 
@@ -148,7 +131,7 @@ try
 
     % SIGNIFICANCE THRESHOLDS
     if isnan(sigLow) || sigLow>=100 || sigLow<=0
-        [~, cont] = warndlgCancel({'Invalid low significance threshold.', 'Press OK to use default (2.5)'}, 'Invalid Entry', 'modal', 1);
+        [~, cont] = warndlgCancel({'Invalid lower significance threshold.', 'Press OK to use default (2.5)'}, 'Invalid Entry', 'modal', 1);
         if ~cont
             return
         end
@@ -157,7 +140,7 @@ try
     end
 
     if isnan(sigHigh) || sigHigh>=100 || sigHigh<=0
-        [~, cont] = warndlgCancel({'Invalid high significance threshold.', 'Press OK to use default (97.5)'}, 'Invalid Entry', 'modal', 1);
+        [~, cont] = warndlgCancel({'Invalid upper significance threshold.', 'Press OK to use default (97.5)'}, 'Invalid Entry', 'modal', 1);
         if ~cont
             return
         end
@@ -167,7 +150,7 @@ try
 
     % High significance level must be higher than low
     if sigHigh <= sigLow
-        [~, cont] = warndlgCancel({'Low significance threshold must be less than high significance threshold.', 'Press OK to use defaults (2.5 and 97.5)'}, 'Invalid Entry', 'modal', 1);
+        [~, cont] = warndlgCancel({'Lower significance threshold must be less than upper significance threshold.', 'Press OK to use defaults (2.5 and 97.5)'}, 'Invalid Entry', 'modal', 1);
         if ~cont
             return
         end
@@ -188,6 +171,24 @@ try
     else
         sigFrames = int32(sigFrames);
         set(gd.handles.hSigFrames,'String', sigFrames);
+    end
+
+
+    %% Warning - chance to opt out
+
+    % OVERWRITING FILES
+    % This should be updated if any of the file naming patterns change
+    if saveMat || saveCsv || saveFigs
+        file1 = [dirFileJoin(outputDir,outputPrefix), 'BLINK_MOD.', figFormat];
+        file2 = [dirFileJoin(outputDir,outputPrefix), 'BLINK_MOD.mat'];
+        file3 = [dirFileJoin(outputDir,outputPrefix), 'BLINK_MODsummary.csv'];
+
+        if exist(file1, 'file') || exist(file2, 'file') || exist(file3, 'file')
+            [~, cont] = warndlgCancel({'Output files with this prefix exist in the selected output directory.', 'OK to overwrite?'}, 'Invalid Entry', 'modal', 1);
+            if ~cont
+                return
+            end
+        end
     end
 
 
@@ -219,6 +220,11 @@ try
         return
     end
 
+    % if analysis is canceled, exit
+    if isempty(results)
+        cleanUp(gd, hWaitBar)
+        return
+    end
 
     %% create figures
     thingsSaved = 0;
@@ -267,6 +273,9 @@ try
 
         % save .mat file in the outputDir
         try
+            %add input file name to the results struct
+            results.inputs.filename = input_file;
+            
             % full path for a mat file:
             matfile_name = sprintf('%sBLINK_MOD.mat', dirFilePrefix);
             save(matfile_name, 'results');

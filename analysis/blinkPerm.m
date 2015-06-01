@@ -51,7 +51,7 @@ function [results] = blinkPerm(numPerms, rawBlinks, sampleRate, varargin)
 % order to identify moments when the group blink rate is significantly
 % higher or lower. Smoothed instantaneous blink rate is calculated by
 % convolving the average blink rate in each frame with a Gaussian kernel.
-% The kernel size is determined using SSKERNEL, or 
+% The kernel size is determined using SSKERNEL.
 %
 % In the permutation testing procedure, each subject's data is circularly
 % shifted by a random amount before calculating the smoothed blink rate.
@@ -68,10 +68,13 @@ function [results] = blinkPerm(numPerms, rawBlinks, sampleRate, varargin)
 % percentile. SigFrameThr (optional input) determines the number of
 % consecutive frames that are necessary to consider a moment significant.
 %
+% If the user cancels the operation, results is an empty array.
+%
+%
 % SEE ALSO: SMOOTHBLINKRATE, SSKERNEL
 
 % Carolyn Ranti
-% 4.12.2015
+% 6.1.2015
 
 %% Parse optional inputs and check
 assert(mod(length(varargin),2)==0, 'Error - odd number of optional parameters (must be name, value pairs)');
@@ -133,7 +136,7 @@ end
 
 %Y (and optW) empty if the operation is canceled by the progress bar
 if isempty(Y)
-    results = struct();
+    results = [];
     return 
 end
 
@@ -169,7 +172,7 @@ for currPerm = 1:numPerms
     if haswaitbar
         %Check for Cancel button press
         if getappdata(hWaitBar,'canceling')
-            results = struct();
+            results = [];
             return
         end
         
@@ -178,7 +181,7 @@ for currPerm = 1:numPerms
     end
 
     %circularly shift data by a random amount
-    shiftSizes = round(dataLen*rand(numPpl,1)); %TODO - check this with Warren
+    shiftSizes = round(dataLen*rand(numPpl,1));
     for p = 1:numPpl
         shiftedData(p,:) = circshift(fractBlinks(p,:), shiftSizes(p), 2); %what to shift, how much to shift it, dimension of shift
     end
@@ -206,12 +209,12 @@ increasedBlinking = find(smoothedBR > highPrctile);
 % moment of blink inhibition/increase?), but only if it's >1.
 if sigFrameThr>1
     
-    db_orig = [decreasedBlinking, decreasedBlinking(end)+2];
+    db_orig = [decreasedBlinking, decreasedBlinking(end)+2]; %last item is sort of a placeholder 
     ib_orig = [increasedBlinking, increasedBlinking(end)+2];
     
     % Decreased blinking
-    mLen = 1;
-    mStart = db_orig(1);
+    mLen = 1; %length of DB moment
+    mStart = db_orig(1); %first frame of this DB moment
     longMoments = [];
     for ii = 2:length(db_orig)
 
@@ -220,7 +223,7 @@ if sigFrameThr>1
         
         if (thisFrame-prevFrame)==1
             mLen = mLen+1;
-        else
+        elseif (thisFrame-prevFrame)>1
             if mLen >= sigFrameThr
                 longMoments = [longMoments, mStart:prevFrame];
             end
@@ -231,8 +234,8 @@ if sigFrameThr>1
     decreasedBlinking = longMoments;
     
     % Increased blinking
-    mLen = 1;
-    mStart = ib_orig(1);
+    mLen = 1; %length of IB moment
+    mStart = ib_orig(1); %first frame of this DB moment
     longMoments = [];
     for ii = 2:length(ib_orig)
 

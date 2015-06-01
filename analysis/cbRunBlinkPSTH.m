@@ -63,7 +63,7 @@ try
     
     % WINDOW SIZE BEFORE AND AFTER EVENT
     if isnan(lagBefore) || isnan(lagAfter) || lagBefore<0 || lagAfter <0
-        error_msgs{end+1} = '\tWindow size before and after event must be positive integers.';
+        error_msgs{end+1} = '\tWindow size before and after event must be integers >=0';
     else %make it an integer
         lagBefore = int32(lagBefore);
         lagAfter = int32(lagAfter);
@@ -74,9 +74,9 @@ try
     
     % NUMBER OF PERMUTATIONS
     if isnan(numPerms) || numPerms <= 0
-        error_msgs{end+1} = '\tNumber of permutations must be a positive number.';
+        error_msgs{end+1} = '\tNumber of permutations must be a positive integer.';
     elseif numPerms>maxPerms
-        error_msgs{end+1} = sprintf('\tMaximum number of permutations= %i', maxPerms);
+        error_msgs{end+1} = sprintf('\tMaximum number of permutations = %i', maxPerms);
     else %make it an integer
         numPerms = int32(numPerms);
         set(gd.handles.hNumPermsPsth, 'String', numPerms);
@@ -152,23 +152,7 @@ try
         end
     end
            
-    %% Warnings - chance to opt out
-    
-    % OVERWRITING FILES
-    % This should be updated if any of the file naming patterns change
-    if saveMat || saveCsv || saveFigs
-        file1 = [dirFileJoin(outputDir,outputPrefix), 'PSTH.', figFormat];
-        file2 = [dirFileJoin(outputDir,outputPrefix), 'PSTHchangeFromMean.', figFormat];
-        file3 = [dirFileJoin(outputDir,outputPrefix), 'PSTH.mat'];
-        file4 = [dirFileJoin(outputDir,outputPrefix), 'PSTHsummary.csv'];
-        
-        if exist(file1, 'file') || exist(file2, 'file') || exist(file3, 'file') || exist(file4, 'file')
-            [~, cont] = warndlgCancel({'Output files with this prefix exist in the selected output directory.', 'OK to overwrite?'}, 'Invalid Entry', 'modal', 1);
-            if ~cont
-                return
-            end
-        end
-    end
+    %% Warning -- chance to opt out
     
     % Window size
     minTargSize = min(cellfun(@length, targetEvents));
@@ -188,7 +172,7 @@ try
     
     % SIGNIFICANCE THRESHOLDS
     if isnan(sigLow) || sigLow>=100 || sigLow<=0
-        [~, cont] = warndlgCancel({'Invalid low significance threshold - must be between 0 and 100.', 'Press OK to use default (2.5)'}, 'Invalid Entry', 'modal', 1);
+        [~, cont] = warndlgCancel({'Invalid lower significance threshold - must be between 0 and 100.', 'Press OK to use default (2.5)'}, 'Invalid Entry', 'modal', 1);
         if ~cont
             return
         end
@@ -197,7 +181,7 @@ try
     end
     
     if isnan(sigHigh) || sigHigh>=100 || sigHigh<=0
-        [~, cont] = warndlgCancel({'Invalid high significance threshold - must be between 0 and 100.', 'Press OK to use default (97.5)'}, 'Invalid Entry', 'modal', 1);
+        [~, cont] = warndlgCancel({'Invalid upper significance threshold - must be between 0 and 100.', 'Press OK to use default (97.5)'}, 'Invalid Entry', 'modal', 1);
         if ~cont
             return
         end
@@ -207,7 +191,7 @@ try
     
     % High significance level must be higher than low
     if sigHigh <= sigLow
-        [~, cont] = warndlgCancel({'Low significance threshold must be less than high significance threshold.', 'Press OK to use defaults (2.5 and 97.5)'}, 'Invalid Entry', 'modal', 1);
+        [~, cont] = warndlgCancel({'Lower significance threshold must be less than upper significance threshold.', 'Press OK to use defaults (2.5 and 97.5)'}, 'Invalid Entry', 'modal', 1);
         if ~cont
             return
         end
@@ -246,6 +230,25 @@ try
     end
     
     
+    %% Warning - chance to opt out
+    
+    % OVERWRITING FILES
+    % This should be updated if any of the file naming patterns change
+    if saveMat || saveCsv || saveFigs
+        file1 = [dirFileJoin(outputDir,outputPrefix), 'PSTH.', figFormat];
+        file2 = [dirFileJoin(outputDir,outputPrefix), 'PSTHchangeFromMean.', figFormat];
+        file3 = [dirFileJoin(outputDir,outputPrefix), 'PSTH.mat'];
+        file4 = [dirFileJoin(outputDir,outputPrefix), 'PSTHsummary.csv'];
+        
+        if exist(file1, 'file') || exist(file2, 'file') || exist(file3, 'file') || exist(file4, 'file')
+            [~, cont] = warndlgCancel({'Output files with this prefix exist in the selected output directory.', 'OK to overwrite?'}, 'Invalid Entry', 'modal', 1);
+            if ~cont
+                return
+            end
+        end
+    end
+    
+
     %% Extra input specs for summary printing
     otherInputSpecs.refFilename = gd.blinkPsthInputs.refFilename;
     otherInputSpecs.refEventType = gd.blinkPsthInputs.refEventType;

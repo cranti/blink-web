@@ -5,8 +5,9 @@ classdef GuiSettings < handle
 
     
     properties
-        maxPerms;
-        error_log;
+        maxPerms; %maximum number of permutations allowed
+        error_log; %name of error log file
+        lastDir; 
     end
         
     
@@ -16,6 +17,8 @@ classdef GuiSettings < handle
         function obj = GuiSettings()
             obj.maxPerms = 10000;
             obj.error_log = sprintf('files/%s_BlinkAnalysesLOG.txt',datestr(now,'yyyy-mm'));
+            
+            obj.lastDir = '';
             
             %TODO - read in preferences file OR defaults if it doesn't
             %exist

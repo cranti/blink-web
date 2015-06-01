@@ -8,27 +8,46 @@ function cbChooseOutputDir(~, ~, gd)
 % Call back function for blinkGUI.m
 
 try
-    %opens in current output directory
+    %if there's a "last directory" saved in guidata, cd to it    
+    origDir = pwd;
+    lastDir = gd.guiSettings.lastDir;
+    if isdir(lastDir)
+        cd(lastDir)
+    end
+    
+    % pick a directory, then cd back to original 
     outputDir = uigetdir(gd.output.dir, 'Choose a folder where results will be saved');
+    cd(origDir)
+    
+    % if user canceled, return
+    if outputDir == 0
+        return
+    end
 
-    if outputDir % if user presses cancel, outputDir = 0
+    %save as output directory
+    gd.output.dir = outputDir;
+    
+    %also save the folder as the "last directory"
+    gd.guiSettings.lastDir = outputDir;
 
-        gd.output.dir = outputDir;
+    %put name of directory in the box:
+    set(gd.handles.hListOutputFile,'String',outputDir,...
+        'FontAngle','normal');
 
-        set(gd.handles.hListOutputFile,'String',outputDir,...
-            'FontAngle','normal');
-
-        % If the extent of the directory string is greater than the size of
-        % the text box, limit it to 50 characters.
-        % (TODO/Future fix - this is hacky)
+    % If the extent of the directory string is greater than the size of
+    % the text box, cut down the length (5 characters at a time)
+    ex = get(gd.handles.hListOutputFile, 'Extent');
+    pos = get(gd.handles.hListOutputFile, 'Position');
+    numChars = length(outputDir)-4;
+    
+    while ex(3) > pos(3)
+        set(gd.handles.hListOutputFile, 'String', ['...', outputDir((end-numChars):end)]);
+        
         ex = get(gd.handles.hListOutputFile, 'Extent');
         pos = get(gd.handles.hListOutputFile, 'Position');
-
-        if ex(3) > pos(3)
-            set(gd.handles.hListOutputFile, 'String', ['...', outputDir((end-50):end)]);
-        end
-
+        numChars = numChars - 5; 
     end
+    
 
 catch ME % Catch and log any errors that weren't dealt with
     err = MException('BlinkGUI:unknown', 'Unknown error');

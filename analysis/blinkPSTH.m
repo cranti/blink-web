@@ -317,6 +317,9 @@ function results = makePSTH(refEvents, targetEvents, lagSize, startFrame, inclTh
                 continue
             end
         end
+            
+        %store the number of reference events (per person)
+        indivTotalRefEvents(targ) = length(refFrames);
 
         % get target data
         thisTarget = targetEvents{targ};
@@ -371,14 +374,10 @@ function results = makePSTH(refEvents, targetEvents, lagSize, startFrame, inclTh
         % individual's PSTH
         if refFrameCount > 0
             indivPSTH(targ,:) = tempCrossCorrCounters ./ refFrameCount;
-        
-            if ~PERMFLAG
-                %store the number of reference events (per person)
-                indivTotalRefEvents(targ) = length(refFrames);
 
-                % # reference events used (i.e. # with enough included frames)
-                indivUsedRefEvents(targ) = refFrameCount;
-            end
+            % # reference events used (i.e. # with enough included frames)
+            indivUsedRefEvents(targ) = refFrameCount;
+            
         end
         
     end %end of target loop

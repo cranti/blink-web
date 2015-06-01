@@ -1,6 +1,6 @@
 function [Y, optW] = convWindow(blinkInput, smoothType, W,  hWaitBar)
 %CONVWINDOW - Return a gaussian window to convolve with blink data. Window
-%has a mean of 0 and a standard deviation 
+%has a mean of 0 and a standard deviation
 %
 % INPUTS:
 %   Blink data  Matrix or vector of blink data. This can be binary data or
@@ -11,8 +11,8 @@ function [Y, optW] = convWindow(blinkInput, smoothType, W,  hWaitBar)
 %               the way that the kernel bandwidth is selected. Currently
 %               only one option -- leaving syntax in for future versions.
 %   W           Optional. A range of values for sskernel to test in order
-%               to find the optimum bandwidth size. Default value that 
-%               sskernel sets is: 
+%               to find the optimum bandwidth size. Default value that
+%               sskernel sets is:
 %                   W = logspace(log10(2*dx),log10((x_max - x_min)),50).
 %               This parameter is only used if smoothType is 'sskernel'
 %   hWaitBar    Optional. Handle to a wait bar to update with progress.
@@ -38,34 +38,37 @@ end
 if nargin<3 || isempty(W)
     W = [];
 end
-    
+
 if nargin<4 || isempty(hWaitBar)
     hWaitBar = [];
 end
 
 % find col indices of all positive entries -- formerly findBlinkIndices()
 [~,blinkInds] = find(blinkInput>0);
-    
+
 switch lower(smoothType)
     case 'sskernel'
         % find optimum bandwidth (i.e. stdev of gaussian), passing in range
         % for W and the handle to the waitbar if they are provided
-        optW = sskernel(blinkInds, W, hWaitBar); 
+        optW = sskernel(blinkInds, W, hWaitBar);
+        
+        %optW is empty if the operation is canceled by the progress bar
+        if isempty(optW)
+            Y = [];
+            return
+        end
+        
     otherwise
         error('Unknown value for smoothType: %s',smoothType);
 end
 
-%optW is empty if the operation is canceled by the progress bar
-if isempty(optW)
-    Y = [];
-    return
-end
+
 
 %% gaussian window to convolve with data
 xrange = -4*optW:1:4*optW;
 % xrange must have an odd number of values for smoothing to work
-if mod(length(xrange),2)==0 
+if mod(length(xrange),2)==0
     xrange = [xrange, max(xrange)+1];
 end
-    
-Y = normpdf(xrange, 0, optW); 
+
+Y = normpdf(xrange, 0, optW);

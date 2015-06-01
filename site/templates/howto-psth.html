@@ -243,19 +243,72 @@
 			 Comprehensive summary document, containing the following sections:
 
 			<ul class = "content2">
+				<li><b>INPUTS</b> 
+					<ul>
+						<li>Window size before event</li>
+						<li>Window size after event</li>
+						<li>Event start frame</li>
+						<li>Include threshold</li>
+						<li>Number of permutations</li>
+					</ul>
+				</li>
+				<li><b>REFERENCE EVENTS</b> 
+					<ul>
+						<li>Input file</li>
+						<li>Reference event type</li>
+						<li>Reference event code <em>(for Three Column format, this value is NaN)</em></li>
+						<li>Number of reference sets</li>
+						<li>Number of samples per reference set (sorted by identifier in Three Column Format)</li>
+					</ul>
+				</li>
+				<li><b>TARGET EVENTS</b> 
+					<ul>
+						<li>Input file</li>
+						<li>Target event type</li>
+						<li>Target event code <em>(for Three Column format, this value is NaN)</em></li>
+						<li>Number of target sets</li>
+						<li>Number of samples per target set (sorted by identifier in Three Column Format)</li>
+					</ul>
+				</li>
+				<li><b>PSTH RESULTS</b> 
+					<ul>
+						<li>Offset from event</li>
+						<li>Peri-stimulus time histogram - average number of blinks at each offset from the event</li>
+						<li>Low percentile of permutations</li>
+						<li>High percentile of permutations</li>
+						<li>Mean of permutations</li>
+					</ul>
+				</li>
+				<li><b>INDIVIDUAL RESULTS</b> 
+					<ul>
+						<li>Total reference events per target participant - the number of reference events in the set corresponding to each target participant. If there is only one set of reference events, there should be the same value in each column.</li>
+						<li>Included reference events per target participant – number of reference events included in analysis (i.e. events with enough included target data, determined via the include threshold).</li>
+						<li>Number of events w/ padding before event – for each target individual, the number of events for which the PSTH window extended before the event start frame (i.e. target data was padded on the left).</li>
+						<li>Number of events w/ padding after event – for each target individual, the number of events for which the PSTH window extended beyond the end of the data (i.e. target data was padded on the right).</li>
+						<li>Number of events w/ padding before and after – for each target individual, the number of events necessitating padding on both the left and the right</li>
+						<li>Individual PSTH – average number of blinks at each offset from the event for each individual (1 target individual per row). The overall PSTH is an average of these values.</li>
+					</ul>
+				</li>
 			</ul>
 		</div>
 	</div>
 
 	<div class = "content1">
-		<b>Figures</b> (PSTH.jpg and SOMETHING ELSE)
+		<b>Figures</b> (PSTH.jpg and PSTHchangeFromMean.jpg)
 
 		<div class="content2">
-			[Explanation of plots]
+			In PSTH.jpg, the PSTH is plotted. This is a histogram showing the average number of blinks in each offset from the event (i.e. event is aligned at time 0). The significance thresholds from the permutation test are plotted as lines.
+		</div>
+		<div class="content2">
+			In PSTHchangeFromMean.jpg, the PSTH is plotted as the percent change from the mean of the permutation test.
 		</div>
 
 		<div class="content2">
 			Use drop down menu to select figure format (.jpg, .pdf, .eps, .fig, .png, or .tif).
+		</div>
+
+		<div class="content2">
+			<img src="../../static/figs/outputPlot.png" alt="psth output">
 		</div>
 
 		<div class="content2">
@@ -267,9 +320,42 @@
 		<b>.mat file</b> (BLINK_MOD.mat) - a MATLAB file containing a single struct ("results"), with the following fields:
 
 		<ul class="content2">
+			<li>psth - overall peri-stimulus time histogram</li>
+			<li>indivPSTH - average number of blinks at each offset from the event for each individual (1 target individual per row).</li>
+			<li>indivTotalRefEventN - the number of reference events in the set corresponding to each target participant. If there is only one set of reference events, there should be the same value in each column.</li>
+			<li>indivUsedRefEventN - number of reference events included in analysis (i.e. events with enough included target data, determined via the include threshold).</li>
+			<li>nRefSetsNoEvents - number of reference sets with no events</li>
+			<li>nTargetPadding - number of events with padding per target participant (one target per row). Three columns: padding before, padding after, padding before and after</li>
+			<li>permTest - struct with information about the permutation test
+				<ul>
+					<li>numPerms - number of permutations</li>
+					<li>lowPrctileLevel - low significance threshold</li>
+					<li>highPrctileLevel - high significance threshold</li>
+					<li>lowPrctile - low percentile of permutation test for each histogram bin</li>
+					<li>highPrctile - high percentile of permutation test for each histogram bin</li>
+					<li>mean - mean of the permutations for each histogram bin</li>
+				</ul>
+			</li>
+			<li>inputs - struct with information about inputs
+				<ul>
+					<li>lagSize - two values: window size before event, window size after event</li>
+					<li>startFrame - event start frame</li>
+					<li>inclThresh - include threshold</li>
+					<li>numTargets - number of target participants</li>
+					<li>numRefSets - number of reference sets</li>
+					<li>targetLens - number of samples in each target set</li>
+					<li>refLens - number of samples in each reference set</li>
+					<li>targetOrder - order of event sets</li>
+					<li>targetEventType - target event type</li>
+					<li>targetCode - target event code</li>
+					<li>refEventType - reference event type</li>
+					<li>refCode - reference event code</li>
+					<li>targetFilename - target event filename</li>
+					<li>refFilename - reference event filename</li>
+				</ul>
+			</li>
 		</ul>
 	</div>
-
 
 </div>
 
@@ -298,7 +384,7 @@
 
 <div class="section-content">
 	<div class = "content1">
-		[Link to error list]
+		[Error list]
 	</div>
 </div>
 

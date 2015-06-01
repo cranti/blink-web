@@ -51,7 +51,8 @@ function [optW, C, W] = sskernel(x, W, hWaitBar)
 % Copyright (c) 2009, Hideaki Shimazaki All rights reserved.
 % http://2000.jukuin.keio.ac.jp/shimazaki
 %
-% Modified by Carolyn Ranti (3.6.2015)
+% Modified by Carolyn Ranti
+% 6.1.2015
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameters Settings
