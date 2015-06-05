@@ -248,7 +248,12 @@ try
     if plottedThings
         title(titleText,'Interpreter','none');
         xlabel('Sample');
-        ylabel('Set Number');
+        
+        if isempty(targetEvents) 
+            ylabel('Reference Set');
+        else
+            ylabel('Target Participant');
+        end
     end
     
 catch ME

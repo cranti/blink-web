@@ -5,13 +5,13 @@ function cbLoadRefData(~, ~, gd)
 % - Callback function for blinkGUI.m
 % - gd is an instance of BlinkGuiData
 
-% 6.1.2015
+% 6.5.2015 - sped up readInPsthEvents, removing waitbar!
 
-try
+try    
     %% Get start frame from advanced options
     startFrame = str2double(get(gd.handles.hStartFrameEdit, 'String'));
     if isnan(startFrame) || startFrame <=0
-        [~, ok] = warndlgCancel({'Invalid start frame - must be a positive integer.','Press OK to use default (1).'},'Invalid entry','modal', 1);
+        [~, ok] = warndlgCancel({'Invalid sample start - must be a positive integer.','Press OK to use default (1).'},'Invalid entry','modal', 1);
         if ~ok
             return
         end
@@ -54,19 +54,16 @@ try
     %save the folder as the "last directory"
     gd.guiSettings.lastDir = PathName;
 
-
-
     %% Dialog box: get file type before loading file
     options = {'One set per column','SetPerCol';
         'Three column format','3col'};
-    [formatType, value] = radioDlg(options, 'Select Format of Reference Data');
+    dlg_title = 'Select Format of Reference Data';
+    [formatType, value] = radioDlg(options, dlg_title);
 
     %if user cancels
     if ~value
         return
     end
-
-
 
     if strcmpi(formatType, 'SetPerCol')
         %% Get reference code
@@ -89,10 +86,10 @@ try
 
         %% Get refEventType with radio dlg box
         %Dialog box: get file type before loading file
-        options = {'All frames', 'allFrames';
-            'First frame only', 'firstFrameOnly';
-            'Middle frame only', 'middleFrameOnly';
-            'Last frame only', 'lastFrameOnly'};
+        options = {'All samples', 'allSamples';
+            'First sample only', 'firstSampleOnly';
+            'Middle sample only', 'middleSampleOnly';
+            'Last sample only', 'lastSampleOnly'};
         [refEventType, value] = radioDlg(options, 'Select Reference Event Type');
 
         %if user cancels
@@ -100,53 +97,23 @@ try
             return
         end
 
-
-        %% Create a waitbar to let user know that something is happening
-
-        hWaitBar = waitbar(0, 'Reading in data...',...
-            'Name', 'Please Wait',...
-            'CreateCancelBtn', 'setappdata(gcbf,''canceling'',1)');
-
-        setappdata(hWaitBar, 'canceling', 0);
-
-        %to make sure it's on the screen for at least .5 seconds
-        tstart = tic;
-
-        %save handle for waitbar in GUIDATA
-        gd.setWaitBar(hWaitBar);
-
-        % Disable buttons to run analyses or toggle between them
-        toggleBigButtons(gd.handles, 'disable');
-
-
         %% Actually read in the data and convert it
 
         try
-            [rawRefData, refOrder] = readInPsthEvents(input_file_full, 'SetPerCol', hWaitBar);
-
-            %if the user canceled
-            if isempty(rawRefData)
-                cleanUp(gd, hWaitBar, tstart);
-                return
-            end
-
+            [rawRefData, refOrder] = readInPsthEvents(input_file_full, 'SetPerCol');
             [refEvents, refLens] = getRefEvents(rawRefData, refCode, refEventType, startFrame);
 
         catch ME
-            cleanUp(gd, hWaitBar, tstart);
             gui_error(ME, gd.guiSettings.error_log);
             return
         end
 
-        cleanUp(gd, hWaitBar, tstart);
-
-        %% for GUIDATA
+        %% for GUIDATA (title for plot)
         refTitle = sprintf('%s, Event code=%i', input_file, refCode);
-
 
     elseif strcmpi(formatType, '3col')
         %% Get data length
-        prompt = {'How long are the reference sets?'};
+        prompt = {'How many samples are in each reference set?'};
         dlg_title = 'Data Length';
         num_lines = 1;
         answer = inputdlg(prompt,dlg_title, num_lines);
@@ -163,11 +130,12 @@ try
         end
 
         %% Get refEventType with radio dlg box
-        options = {'All frames', 'allFrames';
-            'First frame only', 'firstFrameOnly';
-            'Middle frame only', 'middleFrameOnly';
-            'Last frame only', 'lastFrameOnly'};
-        [refEventType, value] = radioDlg(options, 'Select Reference Event Type');
+        options = {'All samples', 'allSamples';
+            'First sample only', 'firstSampleOnly';
+            'Middle sample only', 'middleSampleOnly';
+            'Last sample only', 'lastSampleOnly'};
+        dlg_title = 'Select Reference Event Type';
+        [refEventType, value] = radioDlg(options, dlg_title);
 
         %if user cancels
         if ~value
@@ -183,7 +151,7 @@ try
             return
         end
 
-        %% things to save in GUI data - NaN if the target data is in 3 column format
+        %% For GUIDATA - NaN if the ref data is in 3 column format
         refCode = NaN;
         refTitle = input_file;
     end
@@ -214,14 +182,4 @@ catch ME % Catch and log any errors that weren't dealt with
     return
 end   
     
-end
-
-%% Clean up - delete wait dialog, enable big buttons
-function cleanUp(gd, hWaitDlg, tstart)
-    %to make sure dlg is on screen for at least .5 seconds
-    while toc(tstart) < .5; end
-    
-    toggleBigButtons(gd.handles, 'enable');
-    delete(hWaitDlg);
-    gd.setWaitBar([]);
 end

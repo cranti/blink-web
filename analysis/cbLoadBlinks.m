@@ -5,7 +5,7 @@ function cbLoadBlinks(~, ~, gd)
 % - Callback function for blinkGUI.m
 % - gd is an instance of BlinkGuiData
 
-% 6.1.2015
+% 6.4.2015
 
 try    
     %% choose file dialog box: 
@@ -33,9 +33,10 @@ try
 
     
     %% Dialog box: get file type before loading file
-    options = {'One subject per column','BinaryMat';
+    options = {'One participant per column','BinaryMat';
                 'Three column format','3col'};
-    [formatType, value] = radioDlg(options, 'Select Format of Blink Data');
+    dlg_title = 'Select Format of Blink Data';
+    [formatType, value] = radioDlg(options, dlg_title);
     
     %if user cancels or doesn't select an option
     if ~value || isempty(formatType)
@@ -44,10 +45,10 @@ try
     
     %% Get data length if format is 3col
     if strcmpi(formatType,'3col')
-        prompt = {'Enter data length:'};
-        dlg_title = '3 Column Format';
+        prompt = {'How many samples were collected?'};
+        dlg_title = 'Data Length';
         num_lines = 1;
-        answer = inputdlg(prompt,dlg_title, num_lines);
+        answer = inputdlg(prompt, dlg_title, num_lines);
         
         %if user cancels or doesn't enter anything
         if isempty(answer)
@@ -65,7 +66,7 @@ try
     end
     
     %% Get sample rate
-    prompt = {'Enter sample rate (frames/sec):'};
+    prompt = {'Enter sample rate (samples/sec):'};
     dlg_title = 'Sample Rate';
     num_lines = 1;
     answer = inputdlg(prompt,dlg_title, num_lines);

@@ -8,3 +8,5 @@ schema.sql
 *.DS_Store
 *.fig
 analysis/files/
+*test_*.m
+

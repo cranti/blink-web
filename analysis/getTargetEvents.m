@@ -12,14 +12,14 @@ function targetEvents = getTargetEvents(eventData, eventCode, eventType)
 % INPUTS:
 %   eventData       Cell with one entry per individual. Each individual can 
 %                   have different lengths of data. This can be continuous
-%                   or categorical data. NaNs indicate frames with lost or
+%                   or categorical data. NaNs indicate samples with lost or
 %                   unusable data (see blinkPSTH parameter 'inclThresh'
 %   eventCode       (opt) Value that indicates the occurrence of a reference 
 %                   event. If unspecified, the event data is left unchanged
 %                   (i.e. if you want to create a PSTH with continuous
 %                   target data).
-%   eventType       (opt) 'allFrames', 'firstFrameOnly', 'lastFrameOnly',
-%                   or 'middleFrameOnly'. Default is 'allFrames'. 
+%   eventType       (opt) 'allSamples', 'firstSampleOnly', 'lastSampleOnly',
+%                   or 'middleSampleOnly'. Default is 'allSamples'. 
 %
 % OUTPUTS:
 %   targetEvents    Cell with one entry per individual. If eventCode has
@@ -43,9 +43,9 @@ end
 
 %otherwise, create a cell with 1 = target event, 0 = no target, NaNs preserved
 
-%default for eventType is allFrames
+%default for eventType is allSamples
 if nargin < 3 || isempty(eventType)
-    eventType = 'allFrames';
+    eventType = 'allSamples';
 end
 
 targetEvents = cell(1,numIndivs);
@@ -55,31 +55,31 @@ for ii = 1:numIndivs
     thisData = eventData{ii};
     theseNans = isnan(thisData);
 
-    if strcmpi(eventType, 'allFrames')
+    if strcmpi(eventType, 'allSamples')
         thisTarget = (thisData == eventCode);
-    elseif strcmpi(eventType, 'firstFrameOnly')
+    elseif strcmpi(eventType, 'firstSampleOnly')
         temp = diff([0, thisData == eventCode]); 
         thisTarget = (temp==1);
-    elseif strcmpi(eventType, 'lastFrameOnly')
+    elseif strcmpi(eventType, 'lastSampleOnly')
         temp = diff([(thisData == eventCode), 0]);
         thisTarget = (temp==-1);
-    elseif strcmpi(eventType, 'middleFrameOnly')
-        %find first and last frames
+    elseif strcmpi(eventType, 'middleSampleOnly')
+        %find first and last samples
         temp = diff([0,(thisData == eventCode)]);
-        firstFrames = find(temp==1);
+        firstSamples = find(temp==1);
         temp = diff([(thisData == eventCode), 0]);
-        lastFrames = find(temp==-1);
+        lastSamples = find(temp==-1);
         
         %sanity check - make sure that there are the same number of first
-        %and last frames (this should never be false...)
-        assert(length(firstFrames) == length(lastFrames), 'Error calculating middle frame');
+        %and last samples (this should never be false...)
+        assert(length(firstSamples) == length(lastSamples), 'Error calculating middle sample');
         
-        %round the average of first and last frames for each blink to get
-        %the middle frame
-        numEvents = length(firstFrames);
+        %round the average of first and last samples for each blink to get
+        %the middle sample
+        numEvents = length(firstSamples);
         targInds = zeros(1,numEvents);
         for r = 1:numEvents
-            targInds(r) = round(mean([firstFrames(r),lastFrames(r)]));
+            targInds(r) = round(mean([firstSamples(r),lastSamples(r)]));
         end
         thisTarget = zeros(size(thisData));
         thisTarget(targInds) = 1;

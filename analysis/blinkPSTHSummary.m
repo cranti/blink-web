@@ -38,13 +38,14 @@ try
     fprintf(fid, '\n** INPUTS **\n');
     fprintf(fid, 'Window size before event:,%i\n', results.inputs.lagSize(1));
     fprintf(fid, 'Window size after event:,%i\n', results.inputs.lagSize(2));
-    fprintf(fid, 'Start frame:,%i\n', results.inputs.startFrame);
+    fprintf(fid, 'Sample start:,%i\n', results.inputs.startFrame);
     fprintf(fid, 'Include threshold:,%s\n', num2str(results.inputs.inclThresh));
     fprintf(fid, '# permutations,%i\n', results.permTest.numPerms);
-
+    fprintf(fid, 'Lower percentile cutoff:,%s\n',num2str(results.permTest.lowPrctileLevel)); 
+    fprintf(fid, 'Upper percentile cutoff:,%s\n',num2str(results.permTest.highPrctileLevel)); 
 
 	%% Reference event data
-    fprintf(fid,'\n** REFERENCE SETS **\n');
+    fprintf(fid,'\n** REFERENCE EVENTS **\n');
     fprintf(fid, 'Input file:,%s\n', otherInputSpecs.refFilename);
 
     if isfield(otherInputSpecs, 'refEventType')
@@ -59,7 +60,7 @@ try
     end
 
     %% Target event data
-    fprintf(fid,'\n** TARGETS **\n');
+    fprintf(fid,'\n** TARGET EVENTS **\n');
     fprintf(fid, 'Input file:,%s\n', otherInputSpecs.targetFilename); 
 
     if isfield(otherInputSpecs, 'targetEventType')
@@ -73,24 +74,34 @@ try
    
     
     %% PSTH
-	fprintf(fid, '\n** PSTH RESULTS **\n');
+	fprintf(fid, '\n** GROUP PSTH RESULTS **\n');
 	
+    %print offset (time from event) with each psth:
     offsetToPrint = (-results.inputs.lagSize(1)):(results.inputs.lagSize(2));
-    fprintf(fid, 'Offset from event:,%s\n', mat2csv(offsetToPrint));
-    fprintf(fid, 'PSTH (avg # blinks):,%s\n', mat2csv(results.psth, 1));
-
-	% significance
-    fprintf(fid, '%s percentile of permutations:,%s\n', num2str(results.permTest.lowPrctileLevel), mat2csv(results.permTest.lowPrctile, 1));
-	fprintf(fid, '%s percentile of permutations:,%s\n', num2str(results.permTest.highPrctileLevel), mat2csv(results.permTest.highPrctile, 1));
-    fprintf(fid, 'Mean of permutations:,%s\n', mat2csv(results.permTest.mean, 1));
+    offsetToPrint = mat2csv(offsetToPrint);
     
+    %PSTH as average blink count
+    fprintf(fid, 'PSTH - Average Blink Count\n');
+    fprintf(fid, 'Time (samples):,%s\n', offsetToPrint);
+    fprintf(fid, 'psth:,%s\n', mat2csv(results.psth, 1));
+    fprintf(fid, 'lowerPrctile:,%s\n', mat2csv(results.permTest.lowPrctile, 1));
+	fprintf(fid, 'upperPrctile:,%s\n', mat2csv(results.permTest.highPrctile, 1));
+    fprintf(fid, 'permMean:,%s\n', mat2csv(results.permTest.mean, 1));
+    
+    %PSTH as percent change from mean
+    fprintf(fid, '\nPSTH - Percent Change from Mean\n');
+    fprintf(fid, 'Time (samples):,%s\n', offsetToPrint);
+    fprintf(fid, 'psth:,%s\n', mat2csv(results.changeFromMean.psth));
+    fprintf(fid, 'lowerPrctile:,%s\n', mat2csv(results.changeFromMean.lowerPrctile));
+    fprintf(fid, 'upperPrctile:,%s\n', mat2csv(results.changeFromMean.upperPrctile));
+
     
     %% individual PSTH
-    fprintf(fid, '\n** INDIVIDUAL RESULTS **\n');
+    fprintf(fid, '\n** INDIVIDUAL PSTH RESULTS **\n');
     
     %Table of values for individual results
     if isfield(otherInputSpecs, 'targetOrder')
-        fprintf(fid, 'Target Identifier:,%s\n', mat2csv(otherInputSpecs.targetOrder, 1));
+        fprintf(fid, 'Target identifier:,%s\n', mat2csv(otherInputSpecs.targetOrder, 1));
     end 
     
     if isfield(otherInputSpecs, 'refOrder')
@@ -98,7 +109,7 @@ try
         if isscalar(refOrder)
             refOrder = ones(size(otherInputSpecs.targetOrder))*refOrder;
         end
-        fprintf(fid, 'Ref. Set Identifier:,%s\n', mat2csv(refOrder, 1));
+        fprintf(fid, 'Reference identifier:,%s\n', mat2csv(refOrder, 1));
     end
     
     fprintf(fid, 'Total reference events per target participant:,%s\n', mat2csv(results.indivTotalRefEventN, 1));
@@ -107,9 +118,9 @@ try
 	fprintf(fid, '# events w/ padding after event:,%s\n', mat2csv(results.nTargetPadding(:,2), 1));
 	fprintf(fid, '# events w/ padding before & after:,%s\n', mat2csv(results.nTargetPadding(:,3), 1));
     
-    fprintf(fid, '\nIndividual PSTH, (avg # blinks. 1 row per target participant)\n');
+    fprintf(fid, '\nIndividual PSTH, (avg blink count; 1 row per target participant)\n');
     
-    fprintf(fid, 'Target ID \\\\ Offset from event:,%s\n', mat2csv(offsetToPrint));
+    fprintf(fid, 'Target identifier \\\\ Time (samples):,%s\n', offsetToPrint);
     for ii = 1:size(results.indivPSTH, 1)
         fprintf(fid,'%s\n',mat2csv([otherInputSpecs.targetOrder(ii),results.indivPSTH(ii,:)], 1));
     end

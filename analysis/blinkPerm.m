@@ -14,12 +14,12 @@ function [results] = blinkPerm(numPerms, rawBlinks, sampleRate, varargin)
 %   'W'             Bandwidth (standard deviation) for Gauss density
 %                   function used to smooth data. This can be a single 
 %                   value or a vector of values that will be tested.
-%   'lowPrctile'    Low percentile to test for significant blink inhibition
-%                   (used in permutation testing). Default 2.5, value must
-%                   be between 0 and 100.
-%   'highPrctile'   High percentile to test for significantly increased
-%                   blinking (used in permutation testing). Default 97.5,
-%                   value must be between 0 and 100.
+%   'lowerPrctile'  Lower percentile cutoff to test for significant blink 
+%                   inhibition (w/ permutation testing). Default 2.5, value
+%                   must be between 0 and 100.
+%   'upperPrctile'  Upper percentile cutoff to test for significantly 
+%                   increased blinking (w/ permutation testing). Default
+%                   97.5, value must be between 0 and 100.
 %   'sigFrameThr'   Number of consecutive samples necessary to consider
 %                   lower or higher blinking a significant moment of blink
 %                   inhibition or increase in blinking.
@@ -27,24 +27,50 @@ function [results] = blinkPerm(numPerms, rawBlinks, sampleRate, varargin)
 %
 %
 % OUTPUT:
-%   results		Struct with the following fields:
-%       smoothedBR - 1 x f vector with smoothed instantaneous blink rate
-%       	for the group
-%       decreasedBlinking - vector with frames in which the smoothed blink
-%           rate of the group is less than the 5th percentile found by the
-%           permutation testing.
-%       increasedBlinking - vector with frames in which the smoothed blink
-%           rate of the group is greater than the 95th percentile found by
-%           permutation testing.
-%       prctile05 - 1 x f vector with the [low] percentile blink rate found
-%           by permutation testing.
-%       prctile95 - 1 x f vector with the 95th percentile blink rate
-%          found by permutation testing.
-%       optW - Bandwidth of the Gaussian kernel used to smooth data
+%   results		Struct with the following sections:
+%
 %       inputs - struct with information about the input variables
-%           (number of individuals in rawBlinks, length of data, number of
-%           permutations, sample rate, frame threshold for significance,
-%           smooth type, and significance frame threshold.
+%           numParticipants - number of participants for whom blink data 
+%               were collected
+%           numSamples - number of samples of blink data collected (i.e., 
+%               data length)
+%           sampleRate - rate at which blink data were sampled (in Hz)       
+%           numPerms - number of permutations used for statistical testing
+%           smoothType - the method used to determine optimal bandwidth for
+%               the smoothing kernel. Currently, always 'sskernel' - in
+%               future versions, may add other options.
+%           bandWRange - range of bandwidths considered in optimization of 
+%               the Gaussian smoothing kernel
+%           lowerPrctileCutoff - lower percentile across all permuted data 
+%               that served as significance cutoff for blink inhibition
+%           upperPrctileCutoff - upper percentile across all permuted data 
+%               that served as significance cutoff for increased blinking
+%           numConsecSamples - minimum number of consecutive samples that 
+%               must exceed the significance threshold to be considered an 
+%               instance of blink inhibition or increased blinking (i.e. 
+%               'sigFrameThr' option)
+%
+%       smoothing - struct with information about data smoothing
+%           bandW - the bandwidth of the Gaussian kernel used to smooth 
+%               blink data
+%
+%       sigBlinkMod - samples with significant blink modulation
+%           blinkInhib - instances of statistically significant blink
+%               inhibition (i.e., sample(s) in which the actual group blink
+%               rate was less than lower percentile of permuted data) 
+%           incrBlink - instances of statistically significant increased
+%               blinking (i.e., sample(s) in which the actual group blink
+%               rate was greater than upper percentile of permuted data)
+%
+%       smoothInstBR - struct with smoothed blink rate in all samples
+%           groupBR - smoothed instantaneous blink rate (blinks/minute) 
+%               of the group of viewers at each sample
+%           lowerPrctilePerm - lower percentile of permuted blink data at
+%               each sample
+%           upperPrctilePerm - upper percentile of permuted blink data at
+%               each sample
+%
+% TODO - change "level" to "cutoff" (lower and upper)
 %
 % The smoothed instantaneous blink rate of a group of individuals is
 % compared to the [low] and [high] percentile of a permutation test, in
@@ -96,15 +122,15 @@ for v = 1:2:length(varargin)
         case 'w'
             W = varargin{v+1};
             assert(isnumeric(W) || isempty(W), 'W must be empty or a numeric array');
-        case 'lowprctile'
+        case 'lowerprctile'
             lowPrctileLevel = varargin{v+1};
             if ~isnumeric(lowPrctileLevel) || ~isscalar(lowPrctileLevel) || lowPrctileLevel<=0 || lowPrctileLevel>=100
-                error('lowPrctile must be a numeric value between 0 and 100');
+                error('lowerPrctile must be a numeric value between 0 and 100');
             end
-        case 'highprctile'
+        case 'upperprctile'
             highPrctileLevel = varargin{v+1};
             if ~isnumeric(highPrctileLevel) || ~isscalar(highPrctileLevel) || highPrctileLevel<=0 || highPrctileLevel>=100
-                error('highPrctile must be a numeric value between 0 and 100');
+                error('upperPrctile must be a numeric value between 0 and 100');
             end
         case 'sigframethr'
             sigFrameThr = varargin{v+1};
@@ -117,6 +143,8 @@ for v = 1:2:length(varargin)
             if ishandle(hWaitBar)
                 haswaitbar = 1;
             end
+        otherwise
+            error('Unknown input variable: %s',varargin{v});
     end
 end
 
@@ -132,9 +160,9 @@ if haswaitbar
 end
 
 % gaussian window to convolve with data
-[Y, optW] = convWindow(fractBlinks, smoothType, W, hWaitBar); 
+[Y, smoothW] = convWindow(fractBlinks, smoothType, W, hWaitBar); 
 
-%Y (and optW) empty if the operation is canceled by the progress bar
+%Y (and smoothW) empty if the operation is canceled by the progress bar
 if isempty(Y)
     results = [];
     return 
@@ -202,15 +230,15 @@ highPrctile = prctile(permutedSmoothedBR, highPrctileLevel, 1);
 
 
 %% Find significant moments of decreased and increased blinking
-decreasedBlinking = find(smoothedBR < lowPrctile);
-increasedBlinking = find(smoothedBR > highPrctile);
+decrBlink = find(smoothedBR < lowPrctile);
+incrBlink = find(smoothedBR > highPrctile);
 
 % Use threshold (how many consecutive frames to consider a significant
 % moment of blink inhibition/increase?), but only if it's >1.
 if sigFrameThr>1
     
-    db_orig = [decreasedBlinking, decreasedBlinking(end)+2]; %last item is sort of a placeholder 
-    ib_orig = [increasedBlinking, increasedBlinking(end)+2];
+    db_orig = [decrBlink, decrBlink(end)+2]; %last item is sort of a placeholder 
+    ib_orig = [incrBlink, incrBlink(end)+2];
     
     % Decreased blinking
     mLen = 1; %length of DB moment
@@ -231,7 +259,7 @@ if sigFrameThr>1
             mStart = thisFrame;
         end
     end
-    decreasedBlinking = longMoments;
+    decrBlink = longMoments;
     
     % Increased blinking
     mLen = 1; %length of IB moment
@@ -252,29 +280,42 @@ if sigFrameThr>1
             mStart = thisFrame;
         end
     end
-    increasedBlinking = longMoments;
+    incrBlink = longMoments;
 end
 
     
 %% Output structure
-%results from analyses
-results.smoothedBR = smoothedBR;
-results.decreasedBlinking = decreasedBlinking;
-results.increasedBlinking = increasedBlinking;
-results.lowPrctileLevel = lowPrctileLevel;
-results.highPrctileLevel = highPrctileLevel;
-results.lowPrctile = lowPrctile;
-results.highPrctile = highPrctile;
-results.optW = optW;
 
-%info about inputs:
+%Sections:
 results.inputs = struct();
-results.inputs.numIndividuals = numPpl;
-results.inputs.dataLen = dataLen;
-results.inputs.numPerms = numPerms;
+results.smoothing = struct();
+results.sigBlinkMod = struct();
+results.smoothInstBR = struct();
+
+%Inputs -- all information that the user specified
+results.inputs.numParticipants = numPpl;
+results.inputs.numSamples = dataLen;
 results.inputs.sampleRate = sampleRate;
-results.inputs.smoothType = smoothType;
-results.inputs.sigFrameThr = sigFrameThr;
+results.inputs.numPerms = numPerms; 
+results.inputs.smoothType = smoothType; 
+results.inputs.bandWRange = W;
+results.inputs.lowerPrctileCutoff = lowPrctileLevel;
+results.inputs.upperPrctileCutoff = highPrctileLevel;
+results.inputs.numConsecSamples = sigFrameThr;
+
+%Smoothing
+results.smoothing.bandW = smoothW; 
+
+% Samples with significant blink modulation 
+results.sigBlinkMod.blinkInhib = decrBlink;
+results.sigBlinkMod.incrBlink = incrBlink;
+
+% Smoothed Instantaneous BR (all samples)
+results.smoothInstBR.groupBR = smoothedBR;
+results.smoothInstBR.lowerPrctilePerm = lowPrctile; 
+results.smoothInstBR.upperPrctilePerm = highPrctile; 
+
+
 
 if haswaitbar
     while toc(tstart) < .5; end 

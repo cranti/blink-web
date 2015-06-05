@@ -1,9 +1,15 @@
 function cbRunBlinkPerm(~, ~, gd)
 %CBRUNPERM - run blink permutation testing. Callback function for blinkGUI.m
 %
-%
+% Note: no error checking for the output file prefix (remove /\. ?)
+
+% Carolyn Ranti
+% 6.5.2015
 
 try
+    %% Initialize hWaitBar as non-handle
+    hWaitBar = NaN;
+    
     %% Get all variables that we'll be using out of gd/gui
 
     % Raw blink data
@@ -16,12 +22,12 @@ try
     numPerms = str2double(get(gd.handles.hNumPerms, 'String'));
 
     % Significance thresholds
-    sigHigh = str2double(get(gd.handles.hSigHighPerm,'String'));
-    sigLow = str2double(get(gd.handles.hSigLowPerm,'String'));
+    sigUpper = str2double(get(gd.handles.hSigHighPerm,'String'));
+    sigLower = str2double(get(gd.handles.hSigLowPerm,'String'));
     sigFrames = str2double(get(gd.handles.hSigFrames, 'String'));
 
     % W range to try in sskernel
-    wString = get(gd.handles.hWRange, 'String');
+    wRangeStr = get(gd.handles.hWRange, 'String');
 
     % What to save
     saveMat = gd.output.saveMat;
@@ -34,7 +40,10 @@ try
     figFormat = gd.output.figFormat;
     input_file = gd.blinkPermInputs.filename;
 
-
+    % GUI settings
+    error_log = gd.guiSettings.error_log;
+    maxPerms = gd.guiSettings.maxPerms;
+    
     %% Check inputs
     error_msgs = {};
 
@@ -45,11 +54,17 @@ try
 
     % NUMBER OF PERMUTATIONS
     if isnan(numPerms) || numPerms<=0
-        error_msgs{end+1} = '\tNumber of permutations must be a positive number';
-    elseif numPerms > gd.guiSettings.maxPerms
+        error_msgs{end+1} = '\tNumber of permutations must be positive.';
+    elseif numPerms > maxPerms
         error_msgs{end+1} = sprintf('\tMaximum number of permutations= %i',gd.guiSettings.maxPerms);
     else
         numPerms = int32(numPerms);
+        
+        %this is a catch to make sure that it isn't rounded down
+        %to 0 by int32 conversion
+        if numPerms==0
+            numPerms=1;
+        end
         set(gd.handles.hNumPerms, 'String', numPerms);
     end
 
@@ -78,13 +93,13 @@ try
 
 
     % W RANGE
-    if isempty(wString)
-        wRange = [];
+    if isempty(wRangeStr)
+        wRangeNums = [];
     else
 
         wWarning = 0; %boolean -- true if something goes wrong
 
-        wStrSplit = strsplit(wString, ':');
+        wStrSplit = strsplit(wRangeStr, ':');
 
         %if there are more than 3 values (separated by :), it's invalid:
         if length(wStrSplit) > 3
@@ -107,57 +122,68 @@ try
                 end
             end  
         end
-
+        
         % If something went wrong, throw warning and revert to default
         if wWarning
-            [~, cont] = warndlgCancel({'Invalid W range: must be a numeric value or range of values (e.g. 1:10 or 1:2:10)','Press OK to use default (none).'}, 'Invalid Entry', 'modal', 1);
+            [~, cont] = warndlgCancel({'Invalid W range: must be a positive numeric value or range of values (e.g. 4 or 1:10 or 1:3:10)','Press OK to use default (none).'}, 'Invalid Entry', 'modal', 1);
             if ~cont
                 return
             end
 
             set(gd.handles.hWRange, 'String', '');
-            wRange = [];
+            wRangeNums = [];
 
         % Otherwise, set up W range
         elseif length(Wvalues)==1
-            wRange = Wvalues;
+            wRangeNums = Wvalues;
         elseif length(Wvalues)==2
-            wRange = Wvalues(1):Wvalues(2);
+            wRangeNums = Wvalues(1):Wvalues(2);
         elseif length(Wvalues)==3
-            wRange = Wvalues(1):Wvalues(2):Wvalues(3);
+            wRangeNums = Wvalues(1):Wvalues(2):Wvalues(3);
         end
+        
+        if any(wRangeNums<=0)
+            [~, cont] = warndlgCancel({'Invalid W range: must be a positive numeric value or range of values (e.g. 4 or 1:10 or 1:3:10)','Press OK to use default (none).'}, 'Invalid Entry', 'modal', 1);
+            if ~cont
+                return
+            end
+
+            set(gd.handles.hWRange, 'String', '');
+            wRangeNums = [];
+        end
+        
     end
 
 
     % SIGNIFICANCE THRESHOLDS
-    if isnan(sigLow) || sigLow>=100 || sigLow<=0
+    if isnan(sigLower) || sigLower>=100 || sigLower<=0
         [~, cont] = warndlgCancel({'Invalid lower significance threshold.', 'Press OK to use default (2.5)'}, 'Invalid Entry', 'modal', 1);
         if ~cont
             return
         end
         set(gd.handles.hSigLowPerm,'String','2.5');
-        sigLow = 2.5;
+        sigLower = 2.5;
     end
 
-    if isnan(sigHigh) || sigHigh>=100 || sigHigh<=0
+    if isnan(sigUpper) || sigUpper>=100 || sigUpper<=0
         [~, cont] = warndlgCancel({'Invalid upper significance threshold.', 'Press OK to use default (97.5)'}, 'Invalid Entry', 'modal', 1);
         if ~cont
             return
         end
         set(gd.handles.hSigHighPerm,'String','97.5');
-        sigHigh = 97.5;
+        sigUpper = 97.5;
     end
 
     % High significance level must be higher than low
-    if sigHigh <= sigLow
+    if sigUpper <= sigLower
         [~, cont] = warndlgCancel({'Lower significance threshold must be less than upper significance threshold.', 'Press OK to use defaults (2.5 and 97.5)'}, 'Invalid Entry', 'modal', 1);
         if ~cont
             return
         end
         set(gd.handles.hSigLowPerm,'String','2.5');
-        sigLow = 2.5;
+        sigLower = 2.5;
         set(gd.handles.hSigHighPerm,'String','97.5');
-        sigHigh = 97.5;
+        sigUpper = 97.5;
     end
 
     % Number of frames (significance)
@@ -170,6 +196,11 @@ try
         sigFrames = 1;
     else
         sigFrames = int32(sigFrames);
+         %this is a catch to make sure that it isn't rounded down
+        %to 0 by int32 conversion
+        if sigFrames==0
+            sigFrames=1;
+        end
         set(gd.handles.hSigFrames,'String', sigFrames);
     end
 
@@ -209,14 +240,14 @@ try
 
     try
         results = blinkPerm(numPerms, rawBlinks, sampleRate,...
-            'lowPrctile', sigLow,...
-            'highPrctile', sigHigh,...
+            'lowerPrctile', sigLower,...
+            'upperPrctile', sigUpper,...
             'sigFrameThr', sigFrames,...
-            'W', wRange,...
+            'W', wRangeNums,...
             'hWaitBar', hWaitBar);
     catch ME 
         cleanUp(gd, hWaitBar)
-        gui_error(ME, gd.guiSettings.error_log);
+        gui_error(ME, error_log);
         return
     end
 
@@ -226,6 +257,9 @@ try
         return
     end
 
+    %% Modify results struct slightly in prep for output stuff
+    results = blinkPermMatConvert(results, input_file, wRangeStr);
+    
     %% create figures
     thingsSaved = 0;
     thingsToSave = saveFigs + saveCsv + saveMat;
@@ -249,7 +283,7 @@ try
             waitbar(thingsSaved/thingsToSave, hWaitBar);
         end
     catch ME
-        gui_error(ME, gd.guiSettings.error_log);
+        gui_error(ME, error_log);
     end
 
 
@@ -259,9 +293,9 @@ try
 
         % output csv summary file
         try
-            blinkPermSummary(dirFilePrefix, results, input_file);
+            blinkPermSummary(dirFilePrefix, results);
         catch ME
-            gui_error(ME, gd.guiSettings.error_log);
+            gui_error(ME, error_log);
         end
 
         thingsSaved = thingsSaved + 1;
@@ -273,14 +307,12 @@ try
 
         % save .mat file in the outputDir
         try
-            %add input file name to the results struct
-            results.inputs.filename = input_file;
             
             % full path for a mat file:
             matfile_name = sprintf('%sBLINK_MOD.mat', dirFilePrefix);
             save(matfile_name, 'results');
         catch ME
-            gui_error(ME, gd.guiSettings.error_log);
+            gui_error(ME, error_log);
         end
 
         thingsSaved = thingsSaved + 1;
@@ -291,7 +323,7 @@ try
     cleanUp(gd, hWaitBar)
 
     %% Warn user if low percentile is at floor
-    if sum(results.lowPrctile > 0) == 0
+    if sum(results.smoothInstBR.lowerPrctilePerm > 0) == 0
         warndlg('Lower percentile of permutation testing is at floor (0).');
     end
 
@@ -299,7 +331,8 @@ try
 catch ME % Catch and log any errors that weren't dealt with
     err = MException('BlinkGUI:unknown', 'Unknown error');
     err = addCause(err, ME);
-    gui_error(err, gd.guiSettings.error_log);
+    gui_error(err, error_log);
+    cleanUp(gd, hWaitBar)
     return
 end
 
@@ -308,6 +341,8 @@ end
 %% Deal with the wait bar, re-enable the big buttons
 function cleanUp(gd, hWaitBar)
     toggleBigButtons(gd.handles, 'enable');
-    delete(hWaitBar);
+    if ishandle(hWaitBar)
+        delete(hWaitBar);
+    end
     gd.setWaitBar([]);
 end

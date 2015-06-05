@@ -17,7 +17,7 @@ function blinkPermFigures(prefix, results, figFormat, axesH)
 % See also BLINKPERM
 
 % Written by Carolyn Ranti
-% 6.1.2015
+% 6.5.2015
 
 
 %%
@@ -27,17 +27,11 @@ if nargin == 2
     figFormat = '';
 end
 
-% Removing this check 6/1/15 - allow for other formats
-% if ~isempty(figFormat)
-%     assert(sum(strcmp(figFormat,{'eps', 'fig', 'jpg', 'pdf', 'png', 'tif'}))==1,'Invalid figure format.');
-% end
-
 if nargin < 4 || length(axesH)~=1
     axesH = NaN;
 end
 
 try
-    numPerms = results.inputs.numPerms;
 
     %% Figure 1 - Higher and lower blinking
 
@@ -49,28 +43,29 @@ try
     end
     hold(ax1,'on');
     
-    legendText = {'Smoothed Blink Rate',...
-                sprintf('%.2f percentile', results.lowPrctileLevel),...
-                sprintf('%.2f percentile', results.highPrctileLevel)};
-
-    plot(ax1, results.smoothedBR,'k');
-    plot(ax1, results.lowPrctile,'b');
-    plot(ax1, results.highPrctile,'r');
     
-    if ~isempty(results.decreasedBlinking)
-        plot(ax1, results.decreasedBlinking, zeros(size(results.decreasedBlinking)),'bo');
-        legendText{end+1} = 'Blink Inhibition Frames';
+    legendText = {'Group Blink Rate',...
+                sprintf('%s Percentile', num2str(results.inputs.lowerPrctileCutoff)),...
+                sprintf('%s Percentile', num2str(results.inputs.upperPrctileCutoff))};
+
+    plot(ax1, results.smoothInstBR.groupBR, 'k');
+    plot(ax1, results.smoothInstBR.lowerPrctilePerm, 'b');
+    plot(ax1, results.smoothInstBR.upperPrctilePerm, 'r');
+    
+    if ~isempty(results.sigBlinkMod.blinkInhib)
+        plot(ax1, results.sigBlinkMod.blinkInhib, zeros(size(results.sigBlinkMod.blinkInhib)),'bo');
+        legendText{end+1} = 'Blink Inhibition';
     end
     
-    if ~isempty(results.increasedBlinking)
-        plot(ax1, results.increasedBlinking, zeros(size(results.increasedBlinking)),'ro');
-        legendText{end+1} = 'Higher Blinking Frames';
+    if ~isempty(results.sigBlinkMod.incrBlink)
+        plot(ax1, results.sigBlinkMod.incrBlink, zeros(size(results.sigBlinkMod.incrBlink)),'ro');
+        legendText{end+1} = 'Increased Blinking';
     end
     
     legend(ax1, legendText);
-    title(ax1, {'Blink Rate Modulation',sprintf('%i Permutations',numPerms)});
-    xlabel(ax1, 'Frame');
-    ylabel(ax1, 'Blink Rate (blinks/min)');
+    title(ax1, {'Blink Rate Modulation',sprintf('%i Permutations',results.inputs.numPerms)});
+    xlabel(ax1, 'Sample');
+    ylabel(ax1, 'Instantaneous Blink Rate (bpm)');
 
     hold(ax1,'off');
 

@@ -20,7 +20,7 @@ function results = blinkPSTH(refEvents, targetEvents, lagSize, numPerms, varargi
 %                   permutation testing is not done.
 %
 % Optional parameters (pass in as name/value pair):
-%   'startFrame'    First frame to start including target and reference
+%   'sampleStart'   First sample to start including target and reference
 %                   events (e.g. if you want to avoid an artifact from the 
 %                   beginning of a movie). Default is 1.
 %   'inclThresh'    Threshold for including target data in the PSTH. This
@@ -76,8 +76,14 @@ function results = blinkPSTH(refEvents, targetEvents, lagSize, numPerms, varargi
 %               from the permutation test
 %           mean - 1 x f vector with the mean blink rate from the
 %               permutation test
-%       * If permutation testing is not run, this is an empty struct.
+%       * This only exists if permutation testing is run.
 %       
+%       changeFromMean - struct with additional results from permutation
+%       testing:
+%           psth - the PSTH represented as a percent change from the mean
+%           value of the permuted data (for each sample).
+%           
+%
 %       inputs - struct with details about the inputs provided
 %           lagSize - size of the window on either side of the event
 %           startFrame - frame to start including reference and target
@@ -93,7 +99,7 @@ function results = blinkPSTH(refEvents, targetEvents, lagSize, numPerms, varargi
 % SEE ALSO: GETREFEVENTS, GETTARGETEVENTS, BLINKPSTHSUMMARY, BLINKPSTHFIGURES
 
 % Written by Carolyn Ranti
-% 4.16.2015
+% 6.4.2015
 % Adapted from code written by Jenn Moriuchi, Grace Ann Marrinan, and Sarah Shultz
 
 %% Set up
@@ -130,7 +136,7 @@ runPermTest = (nargin>=4) && (~isempty(numPerms)) && (numPerms > 0);
 assert(mod(length(varargin),2)==0, 'Odd number of optional parameters (must be name, value pairs)');
 
 %defaults
-startFrame = 1;
+sampleStart = 1;
 inclThresh = .2; 
 lowPrctileLevel = 2.5; 
 highPrctileLevel = 97.5;
@@ -138,10 +144,10 @@ refLens = [];
 
 for v = 1:2:length(varargin)
    switch lower(varargin{v})
-       case 'startframe'
-           startFrame = varargin{v+1};
-           if ~isnumeric(startFrame) || ~isscalar(startFrame) || startFrame<0
-              error('startFrame must be a positive numeric value');
+       case 'samplestart'
+           sampleStart = varargin{v+1};
+           if ~isnumeric(sampleStart) || ~isscalar(sampleStart) || sampleStart<0
+              error('sampleStart must be a positive numeric value');
            end
        case 'inclthresh'
            inclThresh = varargin{v+1};
@@ -195,8 +201,8 @@ if haswaitbar
     waitbar(0, hWaitBar, 'Creating PSTH...');
 end
 
-% Make PSTH 
-results = makePSTH(refEvents, targetEvents, lagSize, startFrame, inclThresh, 0);
+% Make PSTH (this starts a struct with results)
+results = makePSTH(refEvents, targetEvents, lagSize, sampleStart, inclThresh, 0);
 
 %have it take at least 1/2 second (for message to be visible in waitbar)
 if haswaitbar
@@ -218,7 +224,7 @@ if runPermTest
         if haswaitbar
             %Check for Cancel button press
             if getappdata(hWaitBar,'canceling')
-                results = struct();
+                results = [];
                 return
             end
         end
@@ -229,13 +235,12 @@ if runPermTest
             permutedData{ii} = circshift(targetEvents{ii}, shiftSizes(ii), 2);  %what to shift, how much to shift it, dimension of shift
         end
         
-        permResults(p,:) = makePSTH(refEvents, permutedData, lagSize, startFrame, inclThresh, 1); 
+        permResults(p,:) = makePSTH(refEvents, permutedData, lagSize, sampleStart, inclThresh, 1); 
     
         %Update progress bar
         if haswaitbar
             waitbar(double(p)/double(numPerms), hWaitBar);
         end
-    
     end
 
     if haswaitbar
@@ -251,23 +256,22 @@ if runPermTest
     results.permTest.highPrctile = prctile(permResults, highPrctileLevel, 1);
     results.permTest.mean = mean(permResults, 1);
     
+    % Calculate the PSTH as % change from the mean of permutations, and add
+    % it to the results struct:
+    results.changeFromMean.psth = (results.psth - results.permTest.mean)./results.permTest.mean;
+    results.changeFromMean.lowerPrctile = (results.permTest.lowPrctile - results.permTest.mean)./results.permTest.mean;
+    results.changeFromMean.upperPrctile = (results.permTest.highPrctile - results.permTest.mean)./results.permTest.mean;
+   
+    
     if haswaitbar
         while toc(tstart) < .5; end 
         waitbar(1, hWaitBar);
     end
-    
-else
-    results.permTest.numPerms = 0;
-    results.permTest.lowPrctileLevel = 0;
-    results.permTest.highPrctileLevel = 0;
-    results.permTest.lowPrctile = [];
-    results.permTest.highPrctile = [];
-    results.permTest.mean = [];
 end
 
 %% Add info about inputs
 results.inputs.lagSize = lagSize;
-results.inputs.startFrame = startFrame;
+results.inputs.startFrame = sampleStart;
 results.inputs.inclThresh = inclThresh;
 results.inputs.numTargets = numTargets;
 results.inputs.numRefSets = numRefSets;
@@ -278,7 +282,7 @@ end
 
 
 %% Make a peri-stimulus time histogram
-function results = makePSTH(refEvents, targetEvents, lagSize, startFrame, inclThresh, PERMFLAG)
+function results = makePSTH(refEvents, targetEvents, lagSize, sampleStart, inclThresh, PERMFLAG)
 %PERMFLAG - if 1, indicates permutation testing. Output is the overallPSTH,
 %rather than the entire struct. Also, some counters are skipped
 
@@ -290,7 +294,13 @@ function results = makePSTH(refEvents, targetEvents, lagSize, startFrame, inclTh
     if numRefSets == 1
         refFrames = refEvents{1};  
         if isempty(refFrames)
-            error('No reference events.')
+            error('No events in the reference set.')
+        end
+    % If there are multiple ref sets, at least one must have events
+    else
+        nonEmptyRefs = cellfun(@(x) ~isempty(x), refEvents);
+        if sum(nonEmptyRefs)==0
+            error('No events in any of the reference sets.')
         end
     end
 
@@ -326,14 +336,14 @@ function results = makePSTH(refEvents, targetEvents, lagSize, startFrame, inclTh
         dataLen = length(thisTarget);
 
         % Loop through reference frames in the reference set
-        tempCrossCorrCounters = zeros(1, windowSize);
+        tempPSTHCount = zeros(1, windowSize);
         refFrameCount = 0; %counter - how many reference frames were used
         for r = 1:length(refFrames)
 
             
             % Define target window around timeZero.
             timeZero = refFrames(r);
-            TS = max(startFrame, (timeZero-lagSize(1)));
+            TS = max(sampleStart, (timeZero-lagSize(1)));
             TE = min(dataLen, (timeZero+lagSize(2)));
             target = thisTarget(TS:TE);
 
@@ -344,8 +354,8 @@ function results = makePSTH(refEvents, targetEvents, lagSize, startFrame, inclTh
             
             %Pad, if necessary, with 0s.
             leftFill = []; rightFill = [];
-            if (timeZero - lagSize(1)) < startFrame
-                leftFill = zeros(1, startFrame - (timeZero-lagSize(1)));
+            if (timeZero - lagSize(1)) < sampleStart
+                leftFill = zeros(1, sampleStart - (timeZero-lagSize(1)));
             end
             if (timeZero + lagSize(2)) > dataLen
                 rightFill = zeros(1,(timeZero+lagSize(2))-dataLen);
@@ -366,14 +376,14 @@ function results = makePSTH(refEvents, targetEvents, lagSize, startFrame, inclTh
 
             % Add hits
             refFrameCount = refFrameCount + 1;
-            tempCrossCorrCounters = nansum([tempCrossCorrCounters;target], 1);
+            tempPSTHCount = nansum([tempPSTHCount;target], 1);
             
         end
         
         % Average across number of reference events and store this
         % individual's PSTH
         if refFrameCount > 0
-            indivPSTH(targ,:) = tempCrossCorrCounters ./ refFrameCount;
+            indivPSTH(targ,:) = tempPSTHCount ./ refFrameCount;
 
             % # reference events used (i.e. # with enough included frames)
             indivUsedRefEvents(targ) = refFrameCount;

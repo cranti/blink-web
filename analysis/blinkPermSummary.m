@@ -1,4 +1,4 @@
-function blinkPermSummary(prefix, results, inputFile)
+function blinkPermSummary(prefix, results)
 %BLINKPERMSUMMARY - Write out csv summary of results from blinkPerm.m
 %
 % Inputs:
@@ -7,20 +7,14 @@ function blinkPermSummary(prefix, results, inputFile)
 %               This can include a path, if you don't want it saved in
 %               current directory.
 %   results     Results struct from blinkPerm.m
-%   inputFile   Optional - name of file loaded with data.
 %
 % See also MAT2CSV
 
 % Written by Carolyn Ranti
-% 3.17.2015
+% 6.5.2015
 
 %% Handle Excel limitations by printing in columns, if necessary.
 excelColLimit = 16384; 
-
-%% Parse inputs
-if nargin<3 || isempty(inputFile)
-    inputFile = 'unknown';
-end
 
 %% Open file
 filename = sprintf('%sBLINK_MODsummary.csv', prefix);
@@ -32,56 +26,68 @@ end
 
 try
     %% summary heading
-    fprintf(fid, 'Group Blink Inhibition Analysis,%s\n', datestr(now));
+    fprintf(fid, 'Blink Inhibition Analysis,%s\n', datestr(now));
     
     %% input/settings
     fprintf(fid, '\n** INPUTS **\n');
-    fprintf(fid, 'Input file:,%s\n', inputFile);
-    fprintf(fid, 'Sample rate (Hz):,%s\n', num2str(results.inputs.sampleRate));
-    fprintf(fid, '# Individuals:,%i\n', results.inputs.numIndividuals);
-    fprintf(fid, '# Permutations:,%i\n', results.inputs.numPerms);
-    fprintf(fid, '# Consecutive samples (sig.):,%i\n', results.inputs.sigFrameThr);
+    fprintf(fid, 'filename,%s\n', results.inputs.filename);
+    fprintf(fid, 'numParticipants,%i\n', results.inputs.numParticipants);
+    fprintf(fid, 'numSamples,%i\n', results.inputs.numSamples); 
+    fprintf(fid, 'sampleRate,%s\n', num2str(results.inputs.sampleRate));
+    fprintf(fid, 'numPerms,%i\n', results.inputs.numPerms);
+    if isempty(results.inputs.bandWRange)
+        fprintf(fid, 'bandWRange,Not specified\n');
+    else
+        fprintf(fid, 'bandWRange,%s\n',num2str(results.inputs.bandWRange)); %TODO - change this. currently printing EVERY value in the range
+    end
+    fprintf(fid, 'lowerPrctileCutoff,%s\n',num2str(results.inputs.lowerPrctileCutoff)); 
+    fprintf(fid, 'upperPrctileCutoff,%s\n',num2str(results.inputs.upperPrctileCutoff)); 
+    fprintf(fid, 'numConsecSamples,%i\n', results.inputs.numConsecSamples);
+    
     
     %%
     fprintf(fid, '\n** SMOOTHING **\n');
-    fprintf(fid, 'Gaussian kernel bandwidth:,%f\n', results.optW);
+    fprintf(fid, 'bandW,%f\n', results.smoothing.bandW);
     
     %% increased and decreased frames are printed in a row each, if they fit
-    fprintf(fid,'\n** SIGNIFICANT FRAMES **\n');
+    fprintf(fid,'\n** SAMPLES W/ SIGNIFICANT BLINK MODULATION **\n');
     
-    numDB = size(results.decreasedBlinking,2);
-    numIB = size(results.increasedBlinking,2);
+    numDB = size(results.sigBlinkMod.blinkInhib,2);
+    numIB = size(results.sigBlinkMod.incrBlink,2);
     
     if numDB < excelColLimit && numIB < excelColLimit
-        decreasedBlinking = mat2csv(results.decreasedBlinking, 1);
-        increasedBlinking = mat2csv(results.increasedBlinking, 1);
-        fprintf(fid,'%s,%s\n','Decreased blinking',decreasedBlinking);
-        fprintf(fid,'%s,%s\n','Increased blinking',increasedBlinking);
+        decreasedBlinking = mat2csv(results.sigBlinkMod.blinkInhib, 1);
+        increasedBlinking = mat2csv(results.sigBlinkMod.incrBlink, 1);
+        fprintf(fid,'%s,%s\n','blinkInhib',decreasedBlinking);
+        fprintf(fid,'%s,%s\n','incrBlink',increasedBlinking);
 
     else %otherwise, they are printed in columns
 
-        table = num2cell(results.decreasedBlinking');
-        table(1:numIB, 2) = num2cell(results.increasedBlinking');
+        table = num2cell(results.sigBlinkMod.blinkInhib');
+        table(1:numIB, 2) = num2cell(results.sigBlinkMod.incrBlink');
 
         allSig_table = mat2csv(table);
-        fprintf(fid,'%s,%s\n','Frames w/ decreased blinking',...
-                            'Frames w/ increased blinking');
+        fprintf(fid,'%s,%s\n','blinkInhib',...
+                            'incrBlink');
         fprintf(fid,'%s\n', allSig_table);              
     end
     
     
     %% smoothed blink rate and low/high percentiles are printed in columns
-    fprintf(fid,'\n** ALL FRAMES **\n');
+    fprintf(fid,'\n** SMOOTHED BLINK RATE (ALL SAMPLES) **\n');
     
-    col_titles = {'Smoothed Blink Rate',...
-                sprintf('%s percentile of permutations', num2str(results.lowPrctileLevel)),...
-                sprintf('%s percentile of permutations', num2str(results.highPrctileLevel))};
-    table = [results.smoothedBR;
-            results.lowPrctile;
-            results.highPrctile]';
+    col_titles = {'Sample#',...
+                'groupBR',...
+                'lowerPrctilePerm',...
+                'upperPrctilePerm'};
+    
+    table = [1:results.inputs.numSamples;
+            results.smoothInstBR.groupBR;
+            results.smoothInstBR.lowerPrctilePerm;
+            results.smoothInstBR.upperPrctilePerm]';
     smoothBR_Percs = mat2csv(table);
 
-    fprintf(fid,'%s,%s,%s\n', col_titles{:});
+    fprintf(fid,'%s,%s,%s,%s\n', col_titles{:});
     fprintf(fid,'%s\n',smoothBR_Percs);
 
 catch ME

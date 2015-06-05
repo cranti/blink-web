@@ -3,7 +3,13 @@ function cbRunBlinkPSTH(~, ~, gd)
 %
 % Note: no error checking for the output file prefix (remove /\. ?)
 
+% Carolyn Ranti
+% 6.5.2015
+
 try
+    %% Initialize hWaitBar as non-handle
+    hWaitBar = NaN;
+    
     %% Get all of the variables we'll be using out of gd (except handles)
     
     %Target and reference events
@@ -63,7 +69,7 @@ try
     
     % WINDOW SIZE BEFORE AND AFTER EVENT
     if isnan(lagBefore) || isnan(lagAfter) || lagBefore<0 || lagAfter <0
-        error_msgs{end+1} = '\tWindow size before and after event must be integers >=0';
+        error_msgs{end+1} = '\tWindow size before and after event must be >=0';
     else %make it an integer
         lagBefore = int32(lagBefore);
         lagAfter = int32(lagAfter);
@@ -74,11 +80,17 @@ try
     
     % NUMBER OF PERMUTATIONS
     if isnan(numPerms) || numPerms <= 0
-        error_msgs{end+1} = '\tNumber of permutations must be a positive integer.';
+        error_msgs{end+1} = '\tNumber of permutations must be positive.';
     elseif numPerms>maxPerms
         error_msgs{end+1} = sprintf('\tMaximum number of permutations = %i', maxPerms);
     else %make it an integer
         numPerms = int32(numPerms);
+        
+        %this is a catch to make sure that it isn't rounded down
+        %to 0 by int32 conversion
+        if numPerms==0
+            numPerms=1;
+        end
         set(gd.handles.hNumPermsPsth, 'String', numPerms);
     end
     
@@ -161,11 +173,11 @@ try
         if ~cont
             return
         end
-    elseif (lagBefore > minTargSize/2) || (lagAfter > minTargSize/2)
-        [~, cont] = warndlgCancel({'The window size before or after event may be too large relative to the length of your data.', 'Press OK to continue with these values'}, 'Warning', 'modal', 1);
-        if ~cont
-            return
-        end
+%     elseif (lagBefore > minTargSize/2) || (lagAfter > minTargSize/2)
+%         [~, cont] = warndlgCancel({'The window size before or after event may be too large relative to the length of your data.', 'Press OK to continue with these values'}, 'Warning', 'modal', 1);
+%         if ~cont
+%             return
+%         end
     end
     
     %% Check advanced settings and revert to defaults if any are invalid
@@ -208,8 +220,8 @@ try
     % value used.
     startFrameInGui = int32(str2double(get(gd.handles.hStartFrameEdit, 'String')));
     if ~isequal(startFrame, startFrameInGui)
-        warnMsg = {'Start frame has been changed since reference events were loaded.', ...
-            'To change the start frame, press CANCEL and reload reference data with desired setting.',...
+        warnMsg = {'Sample start has been changed since reference events were loaded.', ...
+            'To change the sample start, press CANCEL and reload reference data with desired setting.',...
             sprintf('Press OK to use the previously set value (%i).', startFrame)};
         
         [~, cont] = warndlgCancel(warnMsg, 'Warning', 'modal', 1);
@@ -286,7 +298,7 @@ try
         
     catch ME
         cleanUp(gd, hWaitBar);
-        gui_error(ME, gd.guiSettings.error_log);
+        gui_error(ME, error_log);
         return
     end
     
@@ -315,7 +327,7 @@ try
     try
         blinkPSTHFigures(dirFilePrefix, results, figFormat);
     catch ME
-        gui_error(ME, gd.guiSettings.error_log);
+        gui_error(ME, error_log);
     end
     
     if saveFigs
@@ -330,7 +342,7 @@ try
         try
             blinkPSTHSummary(dirFilePrefix, results, otherInputSpecs);
         catch ME
-            gui_error(ME, gd.guiSettings.error_log);
+            gui_error(ME, error_log);
         end
         
         thingsSaved = thingsSaved + 1;
@@ -379,7 +391,8 @@ try
 catch ME
     err = MException('BlinkGUI:unknown', 'Unknown error');
     err = addCause(err, ME);
-    gui_error(err, gd.guiSettings.error_log);
+    gui_error(err, error_log);
+    cleanUp(gd, hWaitBar)
     return
 end
 
@@ -388,6 +401,8 @@ end
 % Deal with the wait bar, re-enable the big buttons
 function cleanUp(gd, hWaitBar)
     toggleBigButtons(gd.handles, 'enable');
-    delete(hWaitBar);
+    if ishandle(hWaitBar)
+        delete(hWaitBar);
+    end
     gd.setWaitBar([]);
 end

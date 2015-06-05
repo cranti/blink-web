@@ -17,7 +17,7 @@ function blinkPSTHFigures(prefix, results, figFormat, axesH)
 % See also BLINKPSTH
 
 % Carolyn Ranti
-% 6.1.2015
+% 6.4.2015
 
 
 %%
@@ -26,11 +26,6 @@ narginchk(2,4);
 if nargin == 2
     figFormat = '';
 end
-
-% Removing this check 6/1/15 - allow for other formats
-% if ~isempty(figFormat)
-%     assert(sum(strcmp(figFormat,{'eps', 'fig', 'jpg', 'pdf', 'png', 'tif'}))==1,'Invalid figure format.');
-% end
 
 if nargin < 4 || length(axesH)~=2
     axesH = [NaN NaN];
@@ -58,11 +53,11 @@ try
     titleText = {'Peri-stimulus time histogram'};
     
     if numPerms > 0
-        plot(ax1, xValues, results.permTest.lowPrctile, 'b');
-        legendText{end+1} = sprintf('%.2f percentile', results.permTest.lowPrctileLevel);
+        plot(ax1, xValues, results.permTest.lowPrctile, '--b');
+        legendText{end+1} = sprintf('%s percentile', num2str(results.permTest.lowPrctileLevel));
         
-        plot(ax1, xValues, results.permTest.highPrctile, 'r');
-        legendText{end+1} = sprintf('%.2f percentile', results.permTest.highPrctileLevel);
+        plot(ax1, xValues, results.permTest.highPrctile, '--r');
+        legendText{end+1} = sprintf('%s percentile', num2str(results.permTest.highPrctileLevel));
         
         %add to title
         titleText{end+1} = sprintf('Number of Permutations=%i', numPerms);
@@ -72,12 +67,12 @@ try
     
     %add a vertical line at the event time
     yrange = ylim(ax1);
-    plot(ax1, [0 0], yrange, '--k');
+    plot(ax1, [0 0], yrange, 'k');
     
     %label plot
     legend(ax1, legendText);
     title(ax1, titleText);
-    xlabel(ax1, 'Event offset (samples)');
+    xlabel(ax1, 'Time (samples)');
     ylabel(ax1, 'Average Blink Count');
     
     hold(ax1,'off');
@@ -95,29 +90,24 @@ try
         end
         hold(ax2,'on');
 
-        % calculate percent change from mean
-        rChangeFromMean = (results.psth - results.permTest.mean)./results.permTest.mean;
-        lowChangeFromMean = (results.permTest.lowPrctile - results.permTest.mean)./results.permTest.mean;
-        highChangeFromMean = (results.permTest.highPrctile - results.permTest.mean)./results.permTest.mean;
-        
-        % bar graph
-        bar(ax2, xValues, rChangeFromMean, 'w');
-        plot(ax2, xValues, lowChangeFromMean, 'b');
-        plot(ax2, xValues, highChangeFromMean, 'r');
+        % bar graph - plot psth as % change from mean
+        bar(ax2, xValues, results.changeFromMean.psth, 'w');
+        plot(ax2, xValues, results.changeFromMean.lowerPrctile, '--b');
+        plot(ax2, xValues, results.changeFromMean.upperPrctile, '--r');
         
         xlim([min(xValues)-1, max(xValues)+1]);
         
         %add a vertical line at the event time
         yrange = ylim(ax2);
-        plot(ax2, [0 0], yrange, '--k');
+        plot(ax2, [0 0], yrange, 'k');
         
         %label plot
         legend(ax2, {'Peri-stimulus time histogram',...
                     sprintf('%.2f percentile', results.permTest.lowPrctileLevel),...
                     sprintf('%.2f percentile', results.permTest.highPrctileLevel)});
-        title(ax2, {'PSTH: Percent Change From Mean',sprintf('Number of Permutations=%i',numPerms)});
-        xlabel(ax2, 'Event offset (samples)');
-        ylabel(ax2, '% Change From Mean');
+        title(ax2, {'PSTH: % Change From Mean BPM',sprintf('Number of Permutations=%i',numPerms)});
+        xlabel(ax2, 'Time (samples)');
+        ylabel(ax2, '% Change from Mean BPM');
 
         hold(ax2,'off');
     end
