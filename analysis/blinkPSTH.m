@@ -2,6 +2,10 @@ function results = blinkPSTH(refEvents, targetEvents, lagSize, numPerms, varargi
 %BLINKPSTH - Create a peri-stimulus time histogram using a group's blink
 %data. Assess significance via permutation testing, with the number of
 %permutations specified.
+
+% TODO - fix 2 names in indivPSTH
+% TODO - update documentation
+
 %
 % INPUTS
 %   refEvents       Cell vector, containing row vectors of reference data.
@@ -194,6 +198,33 @@ for v = 1:2:length(varargin)
    end
 end
 
+%% Initialize results struct:
+
+%Structure
+results = struct();
+results.inputs = struct();
+results.refEvents = struct();
+results.targetEvents = struct();
+results.groupPSTH = struct();
+results.indivPSTH = struct();
+
+%Fill in inputs
+results.inputs.winSizeBefore = lagSize(1);
+results.inputs.winSizeAfter = lagSize(2);
+results.inputs.sampleStart = sampleStart;
+results.inputs.numPerms = numPerms;
+results.inputs.lowerPrctileCutoff = lowPrctileLevel;
+results.inputs.upperPrctileCutoff = highPrctileLevel;
+results.inputs.includeThresh = inclThresh; 
+
+%Fill in refEvents
+results.refEvents.numSets = numRefSets; 
+results.refEvents.numSamples = refLens; 
+
+%Fill in targetEvents
+results.targetEvents.numSets = numTargets; 
+results.targetEvents.numSamples = cellfun(@length, targetEvents);
+
 
 %% Calculate cross-correlogram
 if haswaitbar
@@ -201,8 +232,8 @@ if haswaitbar
     waitbar(0, hWaitBar, 'Creating PSTH...');
 end
 
-% Make PSTH (this starts a struct with results)
-results = makePSTH(refEvents, targetEvents, lagSize, sampleStart, inclThresh, 0);
+% Make PSTH, filling in results struct
+[results.groupPSTH, results.indivPSTH] = makePSTH(refEvents, targetEvents, lagSize, sampleStart, inclThresh, 0);
 
 %have it take at least 1/2 second (for message to be visible in waitbar)
 if haswaitbar
@@ -247,48 +278,37 @@ if runPermTest
         tstart = tic;
         waitbar(0, hWaitBar,'Calculating Significance...');
     end
-    
-    % Add low and high percentile values to results
-    results.permTest.numPerms = numPerms;
-    results.permTest.lowPrctileLevel = lowPrctileLevel;
-    results.permTest.highPrctileLevel = highPrctileLevel;
-    results.permTest.lowPrctile = prctile(permResults, lowPrctileLevel, 1);
-    results.permTest.highPrctile = prctile(permResults, highPrctileLevel, 1);
-    results.permTest.mean = mean(permResults, 1);
+
+    % Add permutation testing to groupPSTH
+    results.groupPSTH.lowerPrctilePerm = prctile(permResults, lowPrctileLevel, 1); 
+    results.groupPSTH.upperPrctilePerm = prctile(permResults, highPrctileLevel, 1);
+    results.groupPSTH.meanPerm = mean(permResults, 1);
     
     % Calculate the PSTH as % change from the mean of permutations, and add
     % it to the results struct:
-    results.changeFromMean.psth = (results.psth - results.permTest.mean)./results.permTest.mean;
-    results.changeFromMean.lowerPrctile = (results.permTest.lowPrctile - results.permTest.mean)./results.permTest.mean;
-    results.changeFromMean.upperPrctile = (results.permTest.highPrctile - results.permTest.mean)./results.permTest.mean;
-   
-    
+    results.groupPSTH.percChangeBPM = (results.psth - results.permTest.mean)./results.permTest.mean;
+    results.groupPSTH.percChangeLowerPrctile = (results.permTest.lowPrctile - results.permTest.mean)./results.permTest.mean; 
+    results.groupPSTH.percChangeUpperPrctile = (results.permTest.highPrctile - results.permTest.mean)./results.permTest.mean;
+       
     if haswaitbar
         while toc(tstart) < .5; end 
         waitbar(1, hWaitBar);
     end
 end
 
-%% Add info about inputs
-results.inputs.lagSize = lagSize;
-results.inputs.startFrame = sampleStart;
-results.inputs.inclThresh = inclThresh;
-results.inputs.numTargets = numTargets;
-results.inputs.numRefSets = numRefSets;
-results.inputs.targetLens = cellfun(@length, targetEvents);
-results.inputs.refLens = refLens;
 
 end
 
 
 %% Make a peri-stimulus time histogram
-function results = makePSTH(refEvents, targetEvents, lagSize, sampleStart, inclThresh, PERMFLAG)
+function [groupPSTH, indivPSTH] = makePSTH(refEvents, targetEvents, lagSize, sampleStart, inclThresh, PERMFLAG)
 %PERMFLAG - if 1, indicates permutation testing. Output is the overallPSTH,
 %rather than the entire struct. Also, some counters are skipped
 
     numRefSets = length(refEvents);
     numIndivs = length(targetEvents);
     windowSize = sum(lagSize) + 1;
+    sampleOffset = (-lagSize(1)):lagSize(2);
 
     % If there is only 1 ref set, it must have events in it
     if numRefSets == 1
@@ -309,7 +329,7 @@ function results = makePSTH(refEvents, targetEvents, lagSize, sampleStart, inclT
     nTargetPadding = zeros(numIndivs,3); %leftFill, rightFill, both
     indivTotalRefEvents = zeros(numIndivs,1); %total reference events for each target
     indivUsedRefEvents = zeros(numIndivs,1); %total ref events *used* for each target
-
+    
     % initialized indivPSTH with NaNs
     indivPSTH = nan(numIndivs, windowSize);
 
@@ -327,16 +347,19 @@ function results = makePSTH(refEvents, targetEvents, lagSize, sampleStart, inclT
                 continue
             end
         end
-            
-        %store the number of reference events (per person)
-        indivTotalRefEvents(targ) = length(refFrames);
+
 
         % get target data
         thisTarget = targetEvents{targ};
         dataLen = length(thisTarget);
-
+                    
+        %store the number of reference events events (per person)
+        indivTotalRefEvents(targ) = length(refFrames);
+        
         % Loop through reference frames in the reference set
         tempPSTHCount = zeros(1, windowSize);
+        tempRefFrameCount = zeros(1, windowSize);
+        
         refFrameCount = 0; %counter - how many reference frames were used
         for r = 1:length(refFrames)
 
@@ -374,16 +397,22 @@ function results = makePSTH(refEvents, targetEvents, lagSize, sampleStart, inclT
                 end
             end
 
-            % Add hits
+            % Number of reference frames with sufficient included data
             refFrameCount = refFrameCount + 1;
-            tempPSTHCount = nansum([tempPSTHCount;target], 1);
             
+            % Tally the number of blinks per bin (tempPSTHCount), and the
+            % number of reference events that contributed included data
+            % (e.g. non-NaN) to each bin (tempRefFrameCount)
+            % (this is a somewhat significant change to the way it was
+            % calculated prior to July 2015)
+            tempPSTHCount = nansum([tempPSTHCount;target], 1);
+            tempRefFrameCount = tempRefFrameCount + ~isnan(target); 
         end
         
         % Average across number of reference events and store this
         % individual's PSTH
         if refFrameCount > 0
-            indivPSTH(targ,:) = tempPSTHCount ./ refFrameCount;
+            indivPSTH(targ,:) = tempPSTHCount ./ tempRefFrameCount;
 
             % # reference events used (i.e. # with enough included frames)
             indivUsedRefEvents(targ) = refFrameCount;
@@ -402,14 +431,24 @@ function results = makePSTH(refEvents, targetEvents, lagSize, sampleStart, inclT
 
     %% results struct
     if PERMFLAG %if permutation testing, only output the psth
-        results = overallPSTH;
+        groupPSTH = overallPSTH;
+        indivPSTH = [];
     else
-        results = struct();
-        results.psth = overallPSTH;
-        results.indivPSTH = indivPSTH;
-        results.indivTotalRefEventN = indivTotalRefEvents;
-        results.indivUsedRefEventN = indivUsedRefEvents;
-        results.nRefSetsNoEvents = nRefSetsNoEvents;
-        results.nTargetPadding = nTargetPadding;
+        %Group PSTH
+        groupPSTH = struct();
+        groupPSTH.time = sampleOffset;
+        groupPSTH.meanBlinkCount = overallPSTH; % results.psth
+        
+        %Individual PSTH
+        indivPSTH = struct();
+        indivPSTH.time = sampleOffset;
+        indivPSTH.meanBlinkCount = indivPSTH; 
+        indivPSTH.numRefEventsDefined = indivTotalRefEvents; %TODO fix this name
+        indivPSTH.numRefEventsIncl = indivUsedRefEvents; 
+        indivPSTH.numTargetEventsDefined = cellfun(@nansum,targetEvents); %TODO fix this name
+        indivPSTH.numPadBefore = nTargetPadding(:,1);
+        indivPSTH.numPadAfter = nTargetPadding(:,2);
+        indivPSTH.numPadBoth = nTargetPadding(:,3);
+        
     end
 end

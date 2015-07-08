@@ -266,7 +266,6 @@ try
     otherInputSpecs.refEventType = gd.blinkPsthInputs.refEventType;
     otherInputSpecs.refCode = gd.blinkPsthInputs.refCode;
     otherInputSpecs.refOrder = refOrder; %pulled out when matching targ & ref sets
-    otherInputSpecs.refLens = refLens; %pulled out when matching targ & ref sets
     
     otherInputSpecs.targetFilename = gd.blinkPsthInputs.targetFilename;
     otherInputSpecs.targetEventType = gd.blinkPsthInputs.targetEventType;
@@ -294,6 +293,7 @@ try
             'inclThresh', inclThresh,...
             'lowPrctile', sigLow,...
             'highPrctile', sigHigh,...
+            'refLens', refLens,...
             'hWaitBar', hWaitBar);
         
     catch ME
@@ -308,6 +308,8 @@ try
         return
     end
     
+    %% Modify results struct in prep for output scripts
+    results = blinkPermMatConvert(results, otherInputSpecs);
     
     %%  create figures
     thingsSaved = 0;
@@ -340,7 +342,7 @@ try
         
         % output csv summary file
         try
-            blinkPSTHSummary(dirFilePrefix, results, otherInputSpecs);
+            blinkPSTHSummary(dirFilePrefix, results);
         catch ME
             gui_error(ME, error_log);
         end
@@ -353,20 +355,6 @@ try
     if saveMat
         
         try
-            %add the other input specs to the results struct to be saved
-            results.inputs.refLens = otherInputSpecs.refLens;
-            
-            results.inputs.targetOrder = otherInputSpecs.targetOrder;
-            results.inputs.refOrder = otherInputSpecs.refOrder;
-            
-            results.inputs.targetEventType = otherInputSpecs.targetEventType;
-            results.inputs.targetCode = otherInputSpecs.targetCode;
-            results.inputs.refEventType = otherInputSpecs.refEventType;
-            results.inputs.refCode = otherInputSpecs.refCode;
-            
-            results.inputs.targetFilename = otherInputSpecs.targetFilename;
-            results.inputs.refFilename = otherInputSpecs.refFilename;
-            
             % full path for a mat file:
             matfile_name = sprintf('%sPSTH.mat', dirFilePrefix);
             
